@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  # 1. 데이터베이스 (PostgreSQL)
+  db:
+    container_name: postgres-db
+    image: postgres:16-alpine # DB는 굳이 빌드할 필요 없이 공식 이미지 사용
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pass1234
+    ports:
+      - "5432:5432" # 외부(DBeaver) 접속용
+    volumes:
+      - ./postgres-data:/var/lib/postgresql/data # 데이터 영구 저장
+
+  # 2. 백엔드 (Go) - 소스 코드 직접 빌드
+  backend:
+    container_name: strength-backend
+    build: 
+      context: ./strength-log-backend # 백엔드 소스 폴더 위치
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+    environment:
+      # host=db : 도커 내부 네트워크에서 'db' 서비스를 찾아감
+      DB_DSN: "host=db user=postgres password=pass1234 dbname=postgres port=5432 sslmode=disable TimeZone=Asia/Seoul"
+
+  # 3. 프론트엔드 (Next.js) - 소스 코드 직접 빌드
+  frontend:
+    container_name: strength-frontend
+    build: 
+      context: ./strength-log-frontend # 프론트엔드 소스 폴더 위치
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    environment:
+      # Next.js 서버(컨테이너)가 백엔드(컨테이너)로 데이터 가지러 갈 때 주소
+      NEXT_PUBLIC_API_URL: "http://backend:8080"
