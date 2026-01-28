@@ -1,0 +1,30 @@
+name: Deploy to GCP
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH Remote Commands
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          port: 22
+          script: |
+            # 1. 프로젝트 폴더로 이동 (폴더명이 다르면 수정 필요)
+            cd strength-log-app
+            
+            # 2. 최신 코드 받기
+            git pull origin main
+            
+            # 3. 기존 컨테이너 내리고 -> 새로 빌드해서 올리기
+            docker compose down
+            docker compose up -d --build
+            
+            # 4. (선택) 안 쓰는 구버전 이미지 삭제해서 용량 확보
+            docker image prune -f
