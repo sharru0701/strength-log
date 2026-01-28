@@ -17,7 +17,7 @@ jobs:
           port: 22
           script: |
             # 1. 프로젝트 폴더로 이동 (폴더명이 다르면 수정 필요)
-            cd strength-log-app
+            cd strength-log
             
             # 2. 최신 코드 받기
             git pull origin main
