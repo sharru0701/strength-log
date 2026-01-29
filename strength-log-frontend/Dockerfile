@@ -10,6 +10,10 @@ RUN npm install
 
 # 4. 소스 코드 복사 및 빌드
 COPY . .
+
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+
 # 메모리 제한(1.5GB) 옵션을 붙여서 빌드 실행
 RUN NODE_OPTIONS="--max-old-space-size=1536" npm run build
 

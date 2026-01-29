@@ -33,6 +33,8 @@ jobs:
           context: ./strength-log-frontend     # 👈 프론트엔드 폴더명 확인!
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/strength-log-frontend:latest
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}
 
   # 2. 서버한테 "새거 나왔으니 가져가!" 라고 명령하는 작업
   deploy-to-server:
