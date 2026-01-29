@@ -4,7 +4,7 @@ WORKDIR /app
 COPY . .
 # 윈도우에서 빌드해도 리눅스용으로 나오게 설정
 RUN go mod download
-RUN CGO_ENABLED=0 GOOS=linux go build -o main main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -p 1 -v -o main main.go
 
 # 2. 실행 단계 (Runner Stage) - 가벼운 Alpine 리눅스 사용
 FROM alpine:latest
