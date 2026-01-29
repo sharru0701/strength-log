@@ -26,8 +26,8 @@ func main() {
 	var err error
 
 	// 2. DB 연결 설정 (주의: 로컬 테스트용)
-	// 선생님 코드에 있던 34.53.6.55 (GCP 공인 IP)를 그대로 둡니다.
-	dsn := "host=34.53.6.55 user=postgres password=pass1234 dbname=postgres port=5432 sslmode=disable TimeZone=Asia/Seoul"
+	// ✅ Docker 서비스 이름 사용!
+	dsn := "host=postgres-db user=postgres password=pass1234 dbname=postgres port=5432 sslmode=disable TimeZone=Asia/Seoul"
 
 	db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
