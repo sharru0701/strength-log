@@ -1,91 +1,254 @@
 package main
 
 import (
+	"database/sql"
+	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
-	"time"
+	"os"
 
-	"github.com/gin-gonic/gin"
-	"gorm.io/datatypes"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
+	_ "github.com/lib/pq"
 )
 
-// 1. 도메인 모델 정의
-type WorkoutLog struct {
-	ID          uint           `gorm:"primaryKey" json:"id"`
-	WorkoutDate time.Time      `json:"workout_date"`
-	Title       string         `json:"title"`
-	Condition   string         `json:"condition"`
-	WorkoutData datatypes.JSON `gorm:"type:jsonb" json:"workout_data"`
+// ---------------------------------------------------------
+// 1. 데이터 모델 (응답용 구조체)
+// ---------------------------------------------------------
+
+type UserConfig struct {
+	ID           int     `json:"id"`
+	BodyWeight   float64 `json:"body_weight"`
+	UnitStandard float64 `json:"unit_standard"`
+	UnitPullup   float64 `json:"unit_pullup"`
 }
 
-var db *gorm.DB
+type WorkoutLog struct {
+	ID           int             `json:"id"`
+	WorkoutDate  string          `json:"workout_date"`
+	ExerciseCode string          `json:"exercise_code"`
+	ExerciseName string          `json:"exercise_name"`
+	ExerciseType string          `json:"exercise_type"` // "531", "custom_dl" 등
+	Data         json.RawMessage `json:"data"`          // JSON 그대로 전달
+	Memo         string          `json:"memo"`
+}
+
+// 대시보드 API 최종 응답 형태
+type DashboardResponse struct {
+	Config UserConfig            `json:"config"`
+	Sheets map[string]WorkoutLog `json:"sheets"` // "SQ": {Log...}, "DL": {Log...}
+}
+
+// ---------------------------------------------------------
+// 2. 서버 및 핸들러
+// ---------------------------------------------------------
+
+var db *sql.DB
 
 func main() {
-	var err error
-
-	// 2. DB 연결 설정 (주의: 로컬 테스트용)
-	// ✅ Docker 서비스 이름 사용!
-	dsn := "host=postgres-db user=postgres password=pass1234 dbname=postgres port=5432 sslmode=disable TimeZone=Asia/Seoul"
-
-	db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
-	if err != nil {
-		log.Fatal("DB 연결 실패 ㅠㅠ: ", err)
+	// 1. 환경변수(Docker)에 값이 있으면 그걸 우선 사용 (배포용)
+	// docker-compose.yml에 적어둔 DB_DSN 값을 읽어옵니다.
+	dsn := os.Getenv("DB_DSN")
+	if dsn == "" {
+		dsn = "host=localhost user=postgres password=pass1234 dbname=postgres port=5432 sslmode=disable TimeZone=Asia/Seoul"
 	}
-	log.Println("🚀 DB 연결 성공!")
 
-	// 3. 테이블 자동 생성
-	db.AutoMigrate(&WorkoutLog{})
+	var err error
+	db, err = sql.Open("postgres", dsn)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	// 4. 웹 서버(Router) 설정
-	r := gin.Default()
+	// 라우팅 설정
+	http.HandleFunc("/api/dashboard", corsMiddleware(handleDashboard))  // 조회
+	http.HandleFunc("/api/workouts", corsMiddleware(handleSaveWorkout)) // 저장
+	http.HandleFunc("/api/history", corsMiddleware(handleHistory))
 
-	// ⭐️ [여기가 추가된 부분] CORS 설정 미들웨어 ⭐️
-	// 프론트엔드(3000번)가 백엔드(8080번)에 접속할 수 있게 문을 열어줍니다.
-	r.Use(func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT")
+	port := ":8080"
+	fmt.Printf("🔥 서버 시작! 포트 %s\n", port)
+	log.Fatal(http.ListenAndServe(port, nil))
+}
 
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(204)
+// CORS 미들웨어
+func corsMiddleware(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
 			return
 		}
+		next(w, r)
+	}
+}
 
-		c.Next()
-	})
+// ---------------------------------------------------------
+// 3. 비즈니스 로직 (핸들러)
+// ---------------------------------------------------------
 
-	// GET: 운동 기록 조회
-	r.GET("/workouts", func(c *gin.Context) {
-		var logs []WorkoutLog
-		result := db.Order("id desc").Find(&logs)
+// GET /api/dashboard
+func handleDashboard(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
 
-		if result.Error != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": result.Error.Error()})
-			return
+	// 1) 사용자 설정 가져오기 (가장 최근 것 1개)
+	var config UserConfig
+	err := db.QueryRow(`
+		SELECT id, body_weight, unit_standard, unit_pullup 
+		FROM user_config 
+		ORDER BY id DESC LIMIT 1
+	`).Scan(&config.ID, &config.BodyWeight, &config.UnitStandard, &config.UnitPullup)
+
+	if err != nil {
+		// 설정이 없으면 기본값 사용
+		config = UserConfig{BodyWeight: 75.0, UnitStandard: 2.5, UnitPullup: 1.0}
+	}
+
+	// 2) 종목별 최신 기록 가져오기 (Postgres의 강력한 기능 DISTINCT ON 사용!)
+	// 해석: 각 운동 코드(exercise_code)별로 그룹을 짓고, 날짜가 가장 최근인 놈 1개만 뽑아라.
+	query := `
+		SELECT DISTINCT ON (e.code) 
+			e.code, e.name, e.type,
+			COALESCE(l.id, 0),
+			COALESCE(TO_CHAR(l.workout_date, 'YYYY-MM-DD'), ''),
+			COALESCE(l.data, '{}'), 
+			COALESCE(l.memo, '')
+		FROM exercises e
+		LEFT JOIN workout_logs l ON e.code = l.exercise_code
+		ORDER BY e.code, l.workout_date DESC, l.id DESC
+	`
+
+	rows, err := db.Query(query)
+	if err != nil {
+		http.Error(w, "DB Error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	sheets := make(map[string]WorkoutLog)
+
+	for rows.Next() {
+		var log WorkoutLog
+		var dataStr string // JSON 문자열 임시 저장
+
+		err := rows.Scan(
+			&log.ExerciseCode, &log.ExerciseName, &log.ExerciseType,
+			&log.ID, &log.WorkoutDate, &dataStr, &log.Memo,
+		)
+		if err != nil {
+			continue
 		}
-		c.JSON(http.StatusOK, logs)
-	})
 
-	// POST: 운동 기록 저장
-	r.POST("/workouts", func(c *gin.Context) {
-		var newLog WorkoutLog
+		// DB에서 꺼낸 JSON 문자열을 RawMessage로 변환
+		log.Data = json.RawMessage(dataStr)
 
-		if err := c.ShouldBindJSON(&newLog); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
+		// 맵에 담기 (예: sheets["SQ"] = log)
+		sheets[log.ExerciseCode] = log
+	}
+
+	// 3) 최종 응답 생성
+	resp := DashboardResponse{
+		Config: config,
+		Sheets: sheets,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
+}
+
+// 1. 저장 요청용 구조체 정의 (핸들러 함수 바로 위에 추가해주세요)
+type CreateLogRequest struct {
+	WorkoutDate  string          `json:"workout_date"`
+	ExerciseCode string          `json:"exercise_code"`
+	Data         json.RawMessage `json:"data"` // 프론트가 주는 JSON 그대로 받음
+	Memo         string          `json:"memo"`
+}
+
+// 2. 저장 핸들러 구현 (기존 함수 교체)
+// POST /api/workouts
+func handleSaveWorkout(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// 1) 요청 바디 해석
+	var req CreateLogRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Bad Request: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// 2) 유효성 검사 (간단하게)
+	if req.WorkoutDate == "" || req.ExerciseCode == "" {
+		http.Error(w, "Missing required fields", http.StatusBadRequest)
+		return
+	}
+
+	// 3) DB 저장 (INSERT)
+	// data 컬럼은 JSONB 타입이므로, []byte 타입을 그대로 넘기면 됩니다.
+	query := `
+		INSERT INTO workout_logs (workout_date, exercise_code, data, memo)
+		VALUES ($1, $2, $3, $4)
+	`
+	_, err := db.Exec(query, req.WorkoutDate, req.ExerciseCode, req.Data, req.Memo)
+	if err != nil {
+		log.Printf("DB Insert Error: %v", err) // 서버 로그에 에러 출력
+		http.Error(w, "DB Error", http.StatusInternalServerError)
+		return
+	}
+
+	// 4) 성공 응답
+	w.WriteHeader(http.StatusCreated)
+	fmt.Fprintf(w, `{"message": "Saved successfully"}`)
+}
+
+// GET /api/history
+func handleHistory(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// 최신순(내림차순)으로 50개만 가져오기
+	query := `
+        SELECT 
+            l.id, 
+            TO_CHAR(l.workout_date, 'YYYY-MM-DD'), 
+            l.exercise_code, 
+            e.name, 
+            e.type,
+            l.data, 
+            l.memo
+        FROM workout_logs l
+        JOIN exercises e ON l.exercise_code = e.code
+        ORDER BY l.workout_date DESC, l.id DESC
+        LIMIT 50
+    `
+
+	rows, err := db.Query(query)
+	if err != nil {
+		http.Error(w, "DB Error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var logs []WorkoutLog
+	for rows.Next() {
+		var l WorkoutLog
+		var dataStr string
+		// Scan 순서 중요!
+		err := rows.Scan(&l.ID, &l.WorkoutDate, &l.ExerciseCode, &l.ExerciseName, &l.ExerciseType, &dataStr, &l.Memo)
+		if err != nil {
+			continue
 		}
+		l.Data = json.RawMessage(dataStr)
+		logs = append(logs, l)
+	}
 
-		if newLog.WorkoutDate.IsZero() {
-			newLog.WorkoutDate = time.Now()
-		}
-
-		db.Create(&newLog)
-		c.JSON(http.StatusOK, newLog)
-	})
-
-	// 5. 서버 실행
-	r.Run(":8080")
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(logs)
 }
