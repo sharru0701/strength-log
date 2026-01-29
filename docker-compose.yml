@@ -16,11 +16,11 @@ services:
 
   # 2. 백엔드 (Go) - 소스 코드 직접 빌드
   backend:
-    container_name: strength-backend
+    container_name: strength-log-backend
     # build: 
     #   context: ./strength-log-backend # 백엔드 소스 폴더 위치
     #   dockerfile: Dockerfile
-    image: sharru0701/strength-backend:latest
+    image: sharru0701/strength-log-backend:latest
     restart: always
     ports:
       - "8080:8080"
@@ -32,11 +32,11 @@ services:
 
   # 3. 프론트엔드 (Next.js) - 소스 코드 직접 빌드
   frontend:
-    container_name: strength-frontend
+    container_name: strength-log-frontend
     # build: 
     #   context: ./strength-log-frontend # 프론트엔드 소스 폴더 위치
     #   dockerfile: Dockerfile
-    image: sharru0701/strength-frontend:latest
+    image: sharru0701/strength-log-frontend:latest
     restart: always
     ports:
       - "3000:3000"
