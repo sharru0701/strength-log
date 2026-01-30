@@ -210,32 +210,40 @@ export default function Dashboard() {
   return (
     <div className="flex flex-col h-[100dvh] bg-black text-white font-sans overflow-hidden relative">
       
-      {/* Header */}
-      <div className="px-5 pt-8 pb-4 bg-black/80 backdrop-blur-md z-20 shrink-0 border-b border-white/5 flex justify-between items-center">
+      {/* Header (Fixed & Blurred) */}
+      {/* [수정] pt-16 -> pt-12: 상단 여백 축소 */}
+      <div className="fixed top-0 left-0 right-0 z-50 px-6 pt-12 pb-6 bg-zinc-950/90 backdrop-blur-xl border-b border-white/5 flex justify-between items-center transition-all duration-300 gap-4">
           <div>
-            <h1 className="text-3xl font-black tracking-tighter text-white">SMART 5/3/1</h1>
-            <div className="flex items-center gap-2 mt-1">
+            <h1 className="text-3xl font-black tracking-tighter text-white leading-[0.9]">Strength<br/>Logger</h1>
+            <div className="flex items-center gap-2 mt-2">
               <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"/>
               <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">System Ready</span>
             </div>
           </div>
           {activeTab !== 'settings' && (
-            <div className="bg-zinc-900 rounded-full px-4 py-2 border border-zinc-800 flex items-center gap-2">
+            <div className="bg-zinc-900/80 rounded-full px-4 py-2 border border-zinc-800 flex items-center gap-2">
                <span className="text-[10px] text-zinc-500 font-bold">DATE</span>
                <Input type="date" value={todayDate} onChange={(e) => setTodayDate(e.target.value)} className="w-auto bg-transparent border-none text-sm font-bold text-white p-0 h-auto focus:ring-0" />
             </div>
           )}
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto px-5 pt-4 pb-32 space-y-6 scrollbar-hide">
+      {/* Content (Adjusted padding-top) */}
+      {/* [수정] pt-52 -> pt-44: 헤더 높이 줄어듦에 따라 본문도 위로 올림 */}
+      <div className="flex-1 overflow-y-auto px-5 pt-44 pb-32 space-y-6 scrollbar-hide">
         {/* Exercise Selector */}
         {activeTab !== 'settings' && (
           <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide snap-x">
             {["SQ", "BP", "PU", "DL", "OHP"].map((code) => {
               const isSelected = selectedCode === code;
               return (
-                <button key={code} onClick={() => handleExerciseChange(code)} className={`snap-start shrink-0 px-6 py-4 rounded-2xl border-2 transition-all duration-300 ${isSelected ? 'bg-violet-600 text-white border-violet-500 shadow-[0_0_20px_rgba(124,58,237,0.5)]' : 'bg-zinc-900 text-zinc-500 border-transparent hover:bg-zinc-800'}`}>
+                <button 
+                  key={code} 
+                  onClick={() => handleExerciseChange(code)} 
+                  className={`snap-start shrink-0 px-6 py-4 rounded-2xl border-2 transition-all duration-300 ${isSelected 
+                    ? 'bg-violet-600 text-white border-violet-500 shadow-[0_0_20px_rgba(124,58,237,0.5)]' 
+                    : 'bg-zinc-900 text-zinc-500 border-transparent hover:bg-zinc-800'}`}
+                >
                   <span className="text-xl font-black tracking-tighter">{code}</span>
                 </button>
               )
@@ -281,7 +289,7 @@ export default function Dashboard() {
                         </div>
                         <div className="h-40 bg-zinc-900 rounded-3xl relative flex flex-col items-center justify-center overflow-hidden border border-zinc-800/50">
                             <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-2">TM</span>
-                            <Input type="number" value={tm} onChange={(e) => setTm(Number(e.target.value))} className="bg-transparent border-none text-center text-5xl font-black text-white h-auto p-0 focus-visible:ring-0 w-full" />
+                            <Input type="number" value={tm || ""} onFocus={(e) => e.target.select()} onChange={(e) => setTm(Number(e.target.value))} className="bg-transparent border-none text-center text-5xl font-black text-white h-auto p-0 focus-visible:ring-0 w-full" />
                             <div className="text-xs text-zinc-600 font-bold mt-2">KG</div>
                         </div>
                     </div>
@@ -297,7 +305,7 @@ export default function Dashboard() {
                             <span className="text-3xl font-black tracking-tighter">{set.weight}<span className="text-sm font-bold opacity-50 ml-1">kg</span></span>
                         </div>
                         <div onClick={(e) => e.stopPropagation()} className="w-16">
-                            <Input type="number" value={set.reps} onChange={(e) => setActualReps({...actualReps, [set.key]: Number(e.target.value)})} className={`h-12 text-center text-xl font-bold rounded-xl border-none focus-visible:ring-0 ${doneSets[set.key] ? 'bg-black/20 text-black placeholder:text-black/40' : 'bg-black/40 text-white'}`} />
+                            <Input type="number" value={set.reps || ""} onFocus={(e) => e.target.select()} onChange={(e) => setActualReps({...actualReps, [set.key]: Number(e.target.value)})} className={`h-12 text-center text-xl font-bold rounded-xl border-none focus-visible:ring-0 ${doneSets[set.key] ? 'bg-black/20 text-black placeholder:text-black/40' : 'bg-black/40 text-white'}`} />
                             <div className={`text-[8px] text-center font-bold mt-1 ${doneSets[set.key] ? 'text-black/60' : 'text-zinc-600'}`}>REPS</div>
                         </div>
                         </div>
@@ -305,32 +313,42 @@ export default function Dashboard() {
                     </div>
 
                     <div onClick={() => toggleDone('s3')} className={`relative p-5 rounded-[32px] border-2 transition-all cursor-pointer overflow-hidden group select-none ${doneSets.s3 ? 'bg-green-500 border-green-500' : 'bg-zinc-800 border-zinc-700'}`}>
-                    {!doneSets.s3 && <div className="absolute top-0 right-0 w-64 h-64 bg-violet-600/20 blur-[80px] rounded-full pointer-events-none group-hover:bg-violet-600/30 transition-all"/>}
-                    <div className="relative z-10 flex flex-col items-center text-center">
-                        <div className={`text-xs font-black tracking-[0.3em] uppercase mb-3 ${doneSets.s3 ? 'text-black/70' : 'text-violet-400'}`}>Top Set Target</div>
-                        <div className="flex items-baseline gap-1 mb-4">
-                            <span className={`text-5xl font-black tracking-tighter ${doneSets.s3 ? 'text-black' : 'text-white'}`}>{preview.w3}</span>
-                            <span className={`text-lg font-bold ${doneSets.s3 ? 'text-black/60' : 'text-zinc-500'}`}>kg</span>
+                        {!doneSets.s3 && <div className="absolute top-0 right-0 w-64 h-64 bg-violet-600/20 blur-[80px] rounded-full pointer-events-none group-hover:bg-violet-600/30 transition-all"/>}
+                        <div className="relative z-10 flex flex-col items-center text-center">
+                            <div className={`text-xs font-black tracking-[0.3em] uppercase mb-3 ${doneSets.s3 ? 'text-black/70' : 'text-violet-400'}`}>Top Set Target</div>
+                            <div className="flex items-baseline gap-1 mb-4">
+                                <span className={`text-5xl font-black tracking-tighter ${doneSets.s3 ? 'text-black' : 'text-white'}`}>{preview.w3}</span>
+                                <span className={`text-lg font-bold ${doneSets.s3 ? 'text-black/60' : 'text-zinc-500'}`}>kg</span>
+                            </div>
+                            <div onClick={(e) => e.stopPropagation()} className="w-full max-w-[120px]">
+                                <Input placeholder="?" value={actualReps.s3} onFocus={(e) => e.target.select()} onChange={(e) => setActualReps({...actualReps, s3: e.target.value})} type="number" className={`h-14 text-center text-3xl font-black rounded-2xl border-none focus-visible:ring-0 shadow-xl ${doneSets.s3 ? 'bg-black/20 text-black placeholder:text-black/40' : 'bg-black/50 text-white placeholder:text-zinc-700'}`} />
+                                <div className={`text-[9px] font-bold tracking-widest mt-2 ${doneSets.s3 ? 'text-black/70' : 'text-zinc-500'}`}>AMRAP REPS</div>
+                            </div>
                         </div>
-                        <div onClick={(e) => e.stopPropagation()} className="w-full max-w-[120px]">
-                            <Input placeholder="?" value={actualReps.s3} onChange={(e) => setActualReps({...actualReps, s3: e.target.value})} type="number" className={`h-14 text-center text-3xl font-black rounded-2xl border-none focus-visible:ring-0 shadow-xl ${doneSets.s3 ? 'bg-black/20 text-black placeholder:text-black/40' : 'bg-black/50 text-white placeholder:text-zinc-700'}`} />
-                            <div className={`text-[9px] font-bold tracking-widest mt-2 ${doneSets.s3 ? 'text-black/70' : 'text-zinc-500'}`}>AMRAP REPS</div>
-                        </div>
-                    </div>
                     </div>
 
                     <div className="pt-4 pb-4">
-                        <Button className="w-full h-20 rounded-[28px] text-xl font-black bg-violet-600 text-white hover:bg-violet-500 shadow-[0_0_30px_rgba(124,58,237,0.5)] transition-all active:scale-[0.98]" onClick={handleSave} disabled={loading}>
+                        <Button 
+                            className="w-full h-20 rounded-[28px] text-xl font-black bg-violet-600 text-white hover:bg-violet-500 shadow-[0_0_30px_rgba(124,58,237,0.5)] transition-all active:scale-[0.98]" 
+                            onClick={handleSave} 
+                            disabled={loading}
+                        >
                             {loading ? "SAVING..." : "COMPLETE WORKOUT"}
                         </Button>
                     </div>
                 </div>
              ) : (
+                // Custom UI
                 <div className="bg-zinc-900 rounded-[32px] p-8 text-center space-y-8">
                     <div className="text-xs text-zinc-500 font-bold uppercase tracking-widest mb-4">Target Weight</div>
-                    <Input type="number" value={weight} onChange={(e) => setWeight(Number(e.target.value))} className="bg-transparent border-b-2 border-zinc-700 rounded-none text-center text-8xl font-black text-white w-full h-32 p-0 focus-visible:ring-0" />
+                    <Input type="number" value={weight || ""} onFocus={(e) => e.target.select()} onChange={(e) => setWeight(Number(e.target.value))} className="bg-transparent border-b-2 border-zinc-700 rounded-none text-center text-8xl font-black text-white w-full h-32 p-0 focus-visible:ring-0" />
                     <div className="pt-8">
-                        <Button className="w-full h-20 rounded-[28px] text-xl font-black bg-violet-600 text-white hover:bg-violet-500 shadow-[0_0_30px_rgba(124,58,237,0.5)] transition-all active:scale-[0.98]" onClick={handleSave}>COMPLETE WORKOUT</Button>
+                        <Button 
+                            className="w-full h-20 rounded-[28px] text-xl font-black bg-violet-600 text-white hover:bg-violet-500 shadow-[0_0_30px_rgba(124,58,237,0.5)] transition-all active:scale-[0.98]" 
+                            onClick={handleSave}
+                        >
+                            COMPLETE WORKOUT
+                        </Button>
                     </div>
                 </div>
              )}
@@ -374,7 +392,7 @@ export default function Dashboard() {
                 <div className="flex items-center justify-between">
                    <span className="text-xl font-bold text-white">Body Weight</span>
                    <div className="flex items-center gap-2">
-                      <Input type="number" value={settingsForm.body_weight} onChange={(e) => setSettingsForm({...settingsForm, body_weight: Number(e.target.value)})} className="w-24 bg-zinc-950/50 border-zinc-800 h-12 text-center text-xl font-bold text-white" />
+                      <Input type="number" value={settingsForm.body_weight || ""} onFocus={(e) => e.target.select()} onChange={(e) => setSettingsForm({...settingsForm, body_weight: Number(e.target.value)})} className="w-24 bg-zinc-950/50 border-zinc-800 h-12 text-center text-xl font-bold text-white" />
                       <span className="text-sm font-bold text-zinc-600">kg</span>
                    </div>
                 </div>
@@ -384,14 +402,14 @@ export default function Dashboard() {
                 <div className="flex items-center justify-between">
                    <span className="text-lg font-bold text-white">Standard Unit</span>
                    <div className="flex items-center gap-2">
-                      <Input type="number" value={settingsForm.unit_standard} onChange={(e) => setSettingsForm({...settingsForm, unit_standard: Number(e.target.value)})} className="w-24 bg-zinc-950/50 border-zinc-800 h-12 text-center text-xl font-bold text-white" />
+                      <Input type="number" value={settingsForm.unit_standard || ""} onFocus={(e) => e.target.select()} onChange={(e) => setSettingsForm({...settingsForm, unit_standard: Number(e.target.value)})} className="w-24 bg-zinc-950/50 border-zinc-800 h-12 text-center text-xl font-bold text-white" />
                       <span className="text-sm font-bold text-zinc-600">kg</span>
                    </div>
                 </div>
                 <div className="flex items-center justify-between">
                    <span className="text-lg font-bold text-white">Pull-up Unit</span>
                    <div className="flex items-center gap-2">
-                      <Input type="number" value={settingsForm.unit_pullup} onChange={(e) => setSettingsForm({...settingsForm, unit_pullup: Number(e.target.value)})} className="w-24 bg-zinc-950/50 border-zinc-800 h-12 text-center text-xl font-bold text-white" />
+                      <Input type="number" value={settingsForm.unit_pullup || ""} onFocus={(e) => e.target.select()} onChange={(e) => setSettingsForm({...settingsForm, unit_pullup: Number(e.target.value)})} className="w-24 bg-zinc-950/50 border-zinc-800 h-12 text-center text-xl font-bold text-white" />
                       <span className="text-sm font-bold text-zinc-600">kg</span>
                    </div>
                 </div>
