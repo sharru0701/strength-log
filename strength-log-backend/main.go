@@ -59,6 +59,7 @@ func main() {
 	}
 
 	// 라우팅 설정
+	http.HandleFunc("/api/config", corsMiddleware(handleConfig))
 	http.HandleFunc("/api/dashboard", corsMiddleware(handleDashboard))  // 조회
 	http.HandleFunc("/api/workouts", corsMiddleware(handleSaveWorkout)) // 저장
 	http.HandleFunc("/api/history", corsMiddleware(handleHistory))
@@ -86,6 +87,57 @@ func corsMiddleware(next http.HandlerFunc) http.HandlerFunc {
 // ---------------------------------------------------------
 // 3. 비즈니스 로직 (핸들러)
 // ---------------------------------------------------------
+
+// GET & POST /api/config
+func handleConfig(w http.ResponseWriter, r *http.Request) {
+	// 1. 설정 조회 (GET)
+	if r.Method == "GET" {
+		var config UserConfig
+		// DB에 값이 없으면 기본값 반환하도록 처리
+		err := db.QueryRow("SELECT body_weight, unit_standard, unit_pullup FROM user_config LIMIT 1").Scan(
+			&config.BodyWeight, &config.UnitStandard, &config.UnitPullup,
+		)
+		if err != nil {
+			// 값이 없으면 기본값 리턴
+			json.NewEncoder(w).Encode(UserConfig{BodyWeight: 75.0, UnitStandard: 2.5, UnitPullup: 1.0})
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(config)
+		return
+	}
+
+	// 2. 설정 저장 (POST)
+	if r.Method == "POST" {
+		var req UserConfig
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid body", http.StatusBadRequest)
+			return
+		}
+
+		// 항상 ID=1인 행을 업데이트 (싱글 유저 가정)
+		// 값이 없으면 INSERT, 있으면 UPDATE (Upsert)
+		query := `
+            INSERT INTO user_config (id, body_weight, unit_standard, unit_pullup)
+            VALUES (1, $1, $2, $3)
+            ON CONFLICT (id) DO UPDATE 
+            SET body_weight = EXCLUDED.body_weight,
+                unit_standard = EXCLUDED.unit_standard,
+                unit_pullup = EXCLUDED.unit_pullup
+        `
+		_, err := db.Exec(query, req.BodyWeight, req.UnitStandard, req.UnitPullup)
+		if err != nil {
+			http.Error(w, "DB Error: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("Config updated"))
+		return
+	}
+
+	http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+}
 
 // GET /api/dashboard
 func handleDashboard(w http.ResponseWriter, r *http.Request) {
@@ -213,23 +265,38 @@ func handleHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 최신순(내림차순)으로 50개만 가져오기
-	query := `
-        SELECT 
-            l.id, 
-            TO_CHAR(l.workout_date, 'YYYY-MM-DD'), 
-            l.exercise_code, 
-            e.name, 
-            e.type,
-            l.data, 
-            l.memo
-        FROM workout_logs l
-        JOIN exercises e ON l.exercise_code = e.code
-        ORDER BY l.workout_date DESC, l.id DESC
-        LIMIT 50
-    `
+	// URL 쿼리 파라미터에서 code 읽기 (예: /api/history?code=SQ)
+	code := r.URL.Query().Get("code")
 
-	rows, err := db.Query(query)
+	// 기본 쿼리
+	query := `
+		SELECT 
+			l.id, 
+			TO_CHAR(l.workout_date, 'YYYY-MM-DD'), 
+			l.exercise_code, 
+			e.name, 
+			e.type,
+			l.data, 
+			l.memo
+		FROM workout_logs l
+		JOIN exercises e ON l.exercise_code = e.code
+		WHERE 1=1
+	`
+
+	var args []interface{}
+	paramCount := 1
+
+	// code 파라미터가 있으면 WHERE 절 추가
+	if code != "" {
+		query += fmt.Sprintf(" AND l.exercise_code = $%d", paramCount)
+		args = append(args, code)
+		paramCount++
+	}
+
+	// 정렬 및 제한
+	query += " ORDER BY l.workout_date DESC, l.id DESC LIMIT 50"
+
+	rows, err := db.Query(query, args...)
 	if err != nil {
 		http.Error(w, "DB Error: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -240,7 +307,6 @@ func handleHistory(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var l WorkoutLog
 		var dataStr string
-		// Scan 순서 중요!
 		err := rows.Scan(&l.ID, &l.WorkoutDate, &l.ExerciseCode, &l.ExerciseName, &l.ExerciseType, &dataStr, &l.Memo)
 		if err != nil {
 			continue

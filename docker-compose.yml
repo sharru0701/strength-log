@@ -42,6 +42,3 @@ services:
       - "3000:3000"
     depends_on:
       - backend
-    # environment:
-      # Next.js 서버(컨테이너)가 백엔드(컨테이너)로 데이터 가지러 갈 때 주소
-      # NEXT_PUBLIC_API_URL: "http://34.53.6.55:8080"
