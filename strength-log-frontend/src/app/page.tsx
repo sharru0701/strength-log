@@ -19,7 +19,6 @@ const Icons = {
 };
 
 // --- GhostInput Component ---
-// [수정] 폰트 크기 text-3xl -> text-2xl로 축소 (잘림 방지)
 const GhostInput = ({ value, onChange, placeholder, className, isDone }: any) => (
   <div className={`relative h-14 w-20 flex items-center justify-center rounded-2xl overflow-hidden transition-colors duration-200 ${isDone ? 'bg-green-500/20 text-green-500' : 'bg-muted dark:bg-white/10 text-foreground'}`}>
       <Input 
@@ -57,10 +56,23 @@ export default function Dashboard() {
   const [memo, setMemo] = useState("");
   const [settingsForm, setSettingsForm] = useState<UserConfig>({ id: 0, body_weight: 0, unit_standard: 0, unit_pullup: 0 });
 
+  const dateInputRef = useRef<HTMLInputElement>(null);
+
   // --- Handlers ---
   const closeDetailModal = () => { setIsClosing(true); setTimeout(() => { setViewLog(null); setIsClosing(false); }, 300); };
   const toggleDone = (key: 's1' | 's2' | 's3') => { setDoneSets(prev => ({ ...prev, [key]: !prev[key] })); if (navigator.vibrate) navigator.vibrate(10); };
   
+  const openDatePicker = () => { 
+    if (dateInputRef.current) {
+        if (typeof dateInputRef.current.showPicker === 'function') {
+            dateInputRef.current.showPicker();
+        } else {
+            dateInputRef.current.focus();
+            dateInputRef.current.click();
+        }
+    }
+  };
+
   const handleExerciseChange = (code: string) => { setSelectedCode(code); if (sheets[code]) initForm(code, sheets[code]); };
   
   const initForm = (code: string, log: WorkoutLog) => {
@@ -160,7 +172,6 @@ export default function Dashboard() {
   const is531 = currentLog?.exercise_type === "531";
 
   return (
-    // [수정 1] overflow-x-hidden으로 좌우 흔들림 원천 차단
     <div className="flex flex-col h-dvh bg-background text-foreground font-sans selection:bg-primary/30 overflow-hidden overflow-x-hidden">
       
       {/* 1. Header */}
@@ -173,7 +184,8 @@ export default function Dashboard() {
       </div>
 
       {/* 2. Main Content */}
-      <div className="flex-1 overflow-y-auto pt-4 pb-40 space-y-8 hide-scrollbar">
+      {/* [수정] 메인 컨텐츠 영역에도 overflow-x-hidden 추가하여 스크롤 안전장치 마련 */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden pt-4 pb-40 space-y-8 hide-scrollbar">
         
         {/* Exercise Chips */}
         {activeTab !== 'settings' && (
@@ -223,8 +235,7 @@ export default function Dashboard() {
              )}
 
              {/* Date Card */}
-             {/* [수정 2] Input에 pointer-events-none 제거, z-50 적용하여 무조건 터치 인식 */}
-             <div className="bg-card rounded-[32px] p-6 flex items-center justify-between shadow-sm border border-white/5 cursor-pointer active:scale-[0.98] transition-all duration-200 relative">
+             <div onClick={openDatePicker} className="bg-card rounded-[32px] p-6 flex items-center justify-between shadow-sm border border-white/5 cursor-pointer active:scale-[0.98] transition-all duration-200 relative">
                 <div>
                     <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Date</div>
                     <div className="text-2xl font-black font-variant-numeric">{todayDate}</div>
@@ -233,9 +244,11 @@ export default function Dashboard() {
                     <Icons.Calendar/>
                 </div>
                 <Input 
+                    ref={dateInputRef} 
                     type="date" 
                     value={todayDate} 
                     onChange={(e) => setTodayDate(e.target.value)} 
+                    // [수정] z-50으로 최상위 배치하여 클릭 가로채기 보장
                     className="absolute inset-0 w-full h-full opacity-0 z-50 cursor-pointer"
                 />
              </div>
@@ -247,7 +260,6 @@ export default function Dashboard() {
                         <div className="bg-card rounded-[32px] p-6 flex flex-col items-center justify-center relative shadow-sm border border-white/5">
                             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">TM</span>
                             <div className="flex items-center justify-center gap-1">
-                                {/* [수정 3] TM 폰트 크기 축소 (text-4xl -> text-3xl) */}
                                 <Input 
                                     type="number" value={tm.toString()} onChange={(e) => setTm(Number(e.target.value))} 
                                     className="w-24 text-center !bg-transparent !border-none !shadow-none !ring-0 text-3xl font-black p-0 text-foreground"
@@ -327,10 +339,10 @@ export default function Dashboard() {
                     <div className="bg-card rounded-[32px] p-6 flex flex-col items-center justify-center relative shadow-sm border border-white/5">
                         <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Target Weight</span>
                         <div className="flex items-center justify-center gap-2">
-                            {/* [수정 3] Target Weight 폰트 크기 축소 (text-5xl -> text-4xl) */}
+                            {/* [수정] w-full -> w-40 으로 제한하여 Overflow 방지, 폰트 크기 축소 (text-4xl) */}
                             <Input 
                                 type="number" value={weight.toString()} onChange={(e) => setWeight(Number(e.target.value))} 
-                                className="w-full h-20 text-center !bg-transparent !border-none !shadow-none !ring-0 text-4xl font-black leading-none p-0 text-foreground"
+                                className="w-40 h-20 text-center !bg-transparent !border-none !shadow-none !ring-0 text-4xl font-black leading-none p-0 text-foreground"
                             />
                             <span className="text-xl font-bold text-muted-foreground mt-4 shrink-0">kg</span>
                         </div>
