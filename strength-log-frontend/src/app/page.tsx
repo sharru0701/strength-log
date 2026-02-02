@@ -19,6 +19,7 @@ const Icons = {
 };
 
 // --- GhostInput Component ---
+// [수정] 폰트 크기 text-3xl -> text-2xl로 축소 (잘림 방지)
 const GhostInput = ({ value, onChange, placeholder, className, isDone }: any) => (
   <div className={`relative h-14 w-20 flex items-center justify-center rounded-2xl overflow-hidden transition-colors duration-200 ${isDone ? 'bg-green-500/20 text-green-500' : 'bg-muted dark:bg-white/10 text-foreground'}`}>
       <Input 
@@ -27,7 +28,7 @@ const GhostInput = ({ value, onChange, placeholder, className, isDone }: any) =>
           placeholder={placeholder} 
           onFocus={(e) => e.target.select()} 
           onChange={onChange} 
-          className={`w-full h-full !bg-transparent !border-none !shadow-none !rounded-none !ring-0 text-center text-3xl font-bold p-0 ${className} ${isDone ? 'text-green-500' : 'text-foreground'}`} 
+          className={`w-full h-full !bg-transparent !border-none !shadow-none !rounded-none !ring-0 text-center text-2xl font-bold p-0 ${className} ${isDone ? 'text-green-500' : 'text-foreground'}`} 
       />
   </div>
 );
@@ -53,26 +54,11 @@ export default function Dashboard() {
   const [reps, setReps] = useState(5);
   const [rpe, setRpe] = useState(8);
   const [ohpSets, setOhpSets] = useState({ s1: 5, s2: 5, s3: 5 });
-  // [추가] 메모 상태 추가
   const [memo, setMemo] = useState("");
   const [settingsForm, setSettingsForm] = useState<UserConfig>({ id: 0, body_weight: 0, unit_standard: 0, unit_pullup: 0 });
 
-  const dateInputRef = useRef<HTMLInputElement>(null);
-
   // --- Handlers ---
   const closeDetailModal = () => { setIsClosing(true); setTimeout(() => { setViewLog(null); setIsClosing(false); }, 300); };
-  
-  const openDatePicker = () => { 
-    if (dateInputRef.current) {
-        if (typeof dateInputRef.current.showPicker === 'function') {
-            dateInputRef.current.showPicker();
-        } else {
-            dateInputRef.current.focus();
-            dateInputRef.current.click();
-        }
-    }
-  };
-
   const toggleDone = (key: 's1' | 's2' | 's3') => { setDoneSets(prev => ({ ...prev, [key]: !prev[key] })); if (navigator.vibrate) navigator.vibrate(10); };
   
   const handleExerciseChange = (code: string) => { setSelectedCode(code); if (sheets[code]) initForm(code, sheets[code]); };
@@ -80,7 +66,7 @@ export default function Dashboard() {
   const initForm = (code: string, log: WorkoutLog) => {
     const data = log.data;
     setDoneSets({ s1: false, s2: false, s3: false }); 
-    setMemo(""); // [추가] 운동 변경 시 메모 초기화
+    setMemo(""); 
     if (log.exercise_type === "531") { setTm(data.tm || 100); setSession(data.session || "a"); setActualReps({ s1: 5, s2: 5, s3: "" }); } 
     else if (log.exercise_type.startsWith("custom")) { setWeight(data.weight || (code === "DL" ? 100 : 40)); }
   };
@@ -100,7 +86,6 @@ export default function Dashboard() {
 
   useEffect(() => { if (preview) setActualReps(prev => ({ ...prev, s1: preview.s1_target, s2: preview.s2_target })); }, [preview?.s1_target, preview?.s2_target]);
 
-  // Data Fetching
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -135,7 +120,6 @@ export default function Dashboard() {
     try {
       const res = await fetch(`${API_URL}/api/workouts`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        // [수정] memo 필드 추가 전송
         body: JSON.stringify({ 
             workout_date: todayDate, 
             exercise_code: selectedCode, 
@@ -176,7 +160,8 @@ export default function Dashboard() {
   const is531 = currentLog?.exercise_type === "531";
 
   return (
-    <div className="flex flex-col h-dvh bg-background text-foreground font-sans selection:bg-primary/30 overflow-hidden">
+    // [수정 1] overflow-x-hidden으로 좌우 흔들림 원천 차단
+    <div className="flex flex-col h-dvh bg-background text-foreground font-sans selection:bg-primary/30 overflow-hidden overflow-x-hidden">
       
       {/* 1. Header */}
       <div className="pt-[env(safe-area-inset-top)] px-6 pb-2 z-20 sticky top-0 bg-background/80 backdrop-blur-xl border-b border-white/5 transition-all">
@@ -238,7 +223,8 @@ export default function Dashboard() {
              )}
 
              {/* Date Card */}
-             <div onClick={openDatePicker} className="bg-card rounded-[32px] p-6 flex items-center justify-between shadow-sm border border-white/5 cursor-pointer active:scale-[0.98] transition-all duration-200 relative">
+             {/* [수정 2] Input에 pointer-events-none 제거, z-50 적용하여 무조건 터치 인식 */}
+             <div className="bg-card rounded-[32px] p-6 flex items-center justify-between shadow-sm border border-white/5 cursor-pointer active:scale-[0.98] transition-all duration-200 relative">
                 <div>
                     <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Date</div>
                     <div className="text-2xl font-black font-variant-numeric">{todayDate}</div>
@@ -247,11 +233,10 @@ export default function Dashboard() {
                     <Icons.Calendar/>
                 </div>
                 <Input 
-                    ref={dateInputRef} 
                     type="date" 
                     value={todayDate} 
                     onChange={(e) => setTodayDate(e.target.value)} 
-                    className="absolute bottom-0 left-0 w-full h-full opacity-0 z-0 pointer-events-none"
+                    className="absolute inset-0 w-full h-full opacity-0 z-50 cursor-pointer"
                 />
              </div>
 
@@ -262,15 +247,16 @@ export default function Dashboard() {
                         <div className="bg-card rounded-[32px] p-6 flex flex-col items-center justify-center relative shadow-sm border border-white/5">
                             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">TM</span>
                             <div className="flex items-center justify-center gap-1">
+                                {/* [수정 3] TM 폰트 크기 축소 (text-4xl -> text-3xl) */}
                                 <Input 
                                     type="number" value={tm.toString()} onChange={(e) => setTm(Number(e.target.value))} 
-                                    className="w-24 text-center !bg-transparent !border-none !shadow-none !ring-0 text-4xl font-black p-0 text-foreground"
+                                    className="w-24 text-center !bg-transparent !border-none !shadow-none !ring-0 text-3xl font-black p-0 text-foreground"
                                 />
                                 <span className="text-sm font-bold text-muted-foreground mt-2">kg</span>
                             </div>
                         </div>
                         
-                        {/* Session Card - Div 클릭 시 강제 열림 */}
+                        {/* Session Card */}
                         <div 
                             onClick={() => setIsSessionOpen(true)} 
                             className="bg-card rounded-[32px] p-6 flex flex-col items-center justify-center relative shadow-sm border border-white/5 cursor-pointer active:scale-[0.98] transition-all duration-200"
@@ -341,9 +327,10 @@ export default function Dashboard() {
                     <div className="bg-card rounded-[32px] p-6 flex flex-col items-center justify-center relative shadow-sm border border-white/5">
                         <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Target Weight</span>
                         <div className="flex items-center justify-center gap-2">
+                            {/* [수정 3] Target Weight 폰트 크기 축소 (text-5xl -> text-4xl) */}
                             <Input 
                                 type="number" value={weight.toString()} onChange={(e) => setWeight(Number(e.target.value))} 
-                                className="w-full h-20 text-center !bg-transparent !border-none !shadow-none !ring-0 text-5xl font-black leading-none p-0 text-foreground"
+                                className="w-full h-20 text-center !bg-transparent !border-none !shadow-none !ring-0 text-4xl font-black leading-none p-0 text-foreground"
                             />
                             <span className="text-xl font-bold text-muted-foreground mt-4 shrink-0">kg</span>
                         </div>
@@ -371,7 +358,6 @@ export default function Dashboard() {
                 </>
              )}
 
-             {/* [추가] 메모 입력 카드 (Complete Workout 버튼 위) */}
              <div className="bg-card rounded-[32px] p-6 shadow-sm border border-white/5 relative">
                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2 block">Memo</span>
                 <textarea
@@ -507,7 +493,6 @@ export default function Dashboard() {
                     </div>
                 </div>
 
-                {/* [추가] 상세 모달 메모 표시 */}
                 {viewLog.memo && (
                     <div className="mt-4 p-6 bg-secondary/30 rounded-[24px]">
                         <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block mb-2">Memo</span>
