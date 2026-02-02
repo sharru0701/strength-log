@@ -53,6 +53,8 @@ export default function Dashboard() {
   const [reps, setReps] = useState(5);
   const [rpe, setRpe] = useState(8);
   const [ohpSets, setOhpSets] = useState({ s1: 5, s2: 5, s3: 5 });
+  // [추가] 메모 상태 추가
+  const [memo, setMemo] = useState("");
   const [settingsForm, setSettingsForm] = useState<UserConfig>({ id: 0, body_weight: 0, unit_standard: 0, unit_pullup: 0 });
 
   const dateInputRef = useRef<HTMLInputElement>(null);
@@ -74,9 +76,11 @@ export default function Dashboard() {
   const toggleDone = (key: 's1' | 's2' | 's3') => { setDoneSets(prev => ({ ...prev, [key]: !prev[key] })); if (navigator.vibrate) navigator.vibrate(10); };
   
   const handleExerciseChange = (code: string) => { setSelectedCode(code); if (sheets[code]) initForm(code, sheets[code]); };
+  
   const initForm = (code: string, log: WorkoutLog) => {
     const data = log.data;
     setDoneSets({ s1: false, s2: false, s3: false }); 
+    setMemo(""); // [추가] 운동 변경 시 메모 초기화
     if (log.exercise_type === "531") { setTm(data.tm || 100); setSession(data.session || "a"); setActualReps({ s1: 5, s2: 5, s3: "" }); } 
     else if (log.exercise_type.startsWith("custom")) { setWeight(data.weight || (code === "DL" ? 100 : 40)); }
   };
@@ -131,7 +135,13 @@ export default function Dashboard() {
     try {
       const res = await fetch(`${API_URL}/api/workouts`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ workout_date: todayDate, exercise_code: selectedCode, data: sheets[selectedCode]?.exercise_type === "531" ? { tm, session, s1_reps: Number(actualReps.s1), s2_reps: Number(actualReps.s2), s3_reps: Number(actualReps.s3), top_weight: preview?.w3 } : { weight, reps, s1: ohpSets.s1, s2: ohpSets.s2, s3: ohpSets.s3 }, memo: "" }),
+        // [수정] memo 필드 추가 전송
+        body: JSON.stringify({ 
+            workout_date: todayDate, 
+            exercise_code: selectedCode, 
+            data: sheets[selectedCode]?.exercise_type === "531" ? { tm, session, s1_reps: Number(actualReps.s1), s2_reps: Number(actualReps.s2), s3_reps: Number(actualReps.s3), top_weight: preview?.w3 } : { weight, reps, s1: ohpSets.s1, s2: ohpSets.s2, s3: ohpSets.s3 }, 
+            memo: memo 
+        }),
       });
       if (res.ok) window.location.reload();
     } catch(e) {} finally { setLoading(false); }
@@ -147,40 +157,16 @@ export default function Dashboard() {
   const getHistoricalSets = (log: WorkoutLog) => {
     const { weight, reps, s1, s2, s3, tm, session, s1_reps, s2_reps, s3_reps, top_weight } = log.data;
 
-    // Case 1: 5/3/1 Logic
     if (log.exercise_type === '531' && config) {
         const isPullUp = log.exercise_code === 'PU';
         const unit = isPullUp ? config.unit_pullup : config.unit_standard;
         const bw = config.body_weight;
         const calc = (r: number) => Math.max(0, Math.round((tm * r - (isPullUp ? bw : 0)) / unit) * unit);
-        
-        let r1 = 0.65, r2 = 0.75; 
-        if (session === 'b') { r1 = 0.70; r2 = 0.80; } 
-        if (session === 'c') { r1 = 0.75; r2 = 0.85; }
-        
-        return [
-            { label: "Set 1", weight: calc(r1), reps: s1_reps },
-            { label: "Set 2", weight: calc(r2), reps: s2_reps },
-            { label: "Top Set", weight: top_weight, reps: s3_reps, isTop: true }
-        ];
+        let r1 = 0.65, r2 = 0.75; if (session === 'b') { r1 = 0.70; r2 = 0.80; } if (session === 'c') { r1 = 0.75; r2 = 0.85; }
+        return [ { label: "Set 1", weight: calc(r1), reps: s1_reps }, { label: "Set 2", weight: calc(r2), reps: s2_reps }, { label: "Top Set", weight: top_weight, reps: s3_reps, isTop: true } ];
     }
-
-    // Case 2: OHP (3 Sets)
-    if (s1 !== undefined && s2 !== undefined && s3 !== undefined) {
-        return [
-            { label: "Set 1", weight: weight, reps: s1 },
-            { label: "Set 2", weight: weight, reps: s2 },
-            { label: "Set 3", weight: weight, reps: s3, isTop: true }
-        ];
-    }
-
-    // Case 3: DL / Simple (1 Set)
-    if (reps !== undefined) {
-        return [
-            { label: "Target Set", weight: weight, reps: reps, isTop: true }
-        ];
-    }
-
+    if (s1 !== undefined && s2 !== undefined && s3 !== undefined) return [ { label: "Set 1", weight: weight, reps: s1 }, { label: "Set 2", weight: weight, reps: s2 }, { label: "Set 3", weight: weight, reps: s3, isTop: true } ];
+    if (reps !== undefined) return [ { label: "Target Set", weight: weight, reps: reps, isTop: true } ];
     return [];
   };
 
@@ -352,7 +338,6 @@ export default function Dashboard() {
              ) : (
                 // Custom Layout
                 <>
-                    {/* [수정] DL/OHP Target Weight Card - Compact Design */}
                     <div className="bg-card rounded-[32px] p-6 flex flex-col items-center justify-center relative shadow-sm border border-white/5">
                         <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Target Weight</span>
                         <div className="flex items-center justify-center gap-2">
@@ -385,6 +370,17 @@ export default function Dashboard() {
                     </div>
                 </>
              )}
+
+             {/* [추가] 메모 입력 카드 (Complete Workout 버튼 위) */}
+             <div className="bg-card rounded-[32px] p-6 shadow-sm border border-white/5 relative">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2 block">Memo</span>
+                <textarea
+                    value={memo}
+                    onChange={(e) => setMemo(e.target.value)}
+                    placeholder="Leave a note..."
+                    className="w-full bg-transparent border-none resize-none outline-none text-xl font-bold placeholder:text-muted-foreground/30 h-24 p-0 text-foreground"
+                />
+             </div>
 
              <Button className="w-full h-20 rounded-[32px] text-xl font-bold bg-primary text-white shadow-xl shadow-primary/20 active:scale-95 transition-all" onClick={handleSave} disabled={loading}>
                 {loading ? "Saving..." : "Complete Workout"}
@@ -510,6 +506,14 @@ export default function Dashboard() {
                         <span className="text-xl text-muted-foreground ml-1">kg</span>
                     </div>
                 </div>
+
+                {/* [추가] 상세 모달 메모 표시 */}
+                {viewLog.memo && (
+                    <div className="mt-4 p-6 bg-secondary/30 rounded-[24px]">
+                        <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block mb-2">Memo</span>
+                        <p className="text-lg font-medium whitespace-pre-wrap">{viewLog.memo}</p>
+                    </div>
+                )}
                 
             </div>
         </div>
