@@ -79,6 +79,8 @@
   --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
   --sidebar-border: oklch(0.929 0.013 255.508);
   --sidebar-ring: oklch(0.704 0.04 256.788);
+  background-color: #000000; /* 또는 #09090b (Zinc-950) */
+  color-scheme: dark; /* CSS에서도 다크 모드 선언 */
 }
 
 .dark {
@@ -122,6 +124,12 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+html,
+body {
+  height: 100%;
+  background-color: #000000; /* 배경을 확실하게 검정으로 */
+  overflow-x: hidden; /* 가로 스크롤 방지 쐐기 */
 }
 
 /* 날짜 입력창의 촌스러운 달력 아이콘 숨기기 */
