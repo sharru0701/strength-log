@@ -11,14 +11,14 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 // --- Icons ---
 const Icons = {
-  // [수정] 아이콘 크기 w-7 -> w-6 (24px)로 조정 (버튼 w-12에 맞는 비율)
-  Record: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 14c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4z"/></svg>,
-  History: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>,
-  Settings: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>,
+  Record: () => <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" className="w-7 h-7"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 14c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4z"/></svg>,
+  History: () => <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>,
+  Settings: () => <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>,
   ArrowDown: () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>,
   Calendar: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
 };
 
+// --- GhostInput Component ---
 const GhostInput = ({ value, onChange, placeholder, className, isDone }: any) => (
   <div className={`relative h-14 w-20 flex items-center justify-center rounded-2xl overflow-hidden transition-colors duration-200 ${isDone ? 'bg-green-500/20 text-green-500' : 'bg-muted dark:bg-white/10 text-foreground'}`}>
       <Input 
@@ -45,6 +45,8 @@ export default function Dashboard() {
   const [todayDate, setTodayDate] = useState(new Date().toISOString().split("T")[0]);
   const [tm, setTm] = useState(100);
   const [session, setSession] = useState<"a" | "b" | "c">("a");
+  const [isSessionOpen, setIsSessionOpen] = useState(false);
+  
   const [actualReps, setActualReps] = useState({ s1: 5, s2: 5, s3: "" });
   const [doneSets, setDoneSets] = useState({ s1: false, s2: false, s3: false });
   const [weight, setWeight] = useState(0);
@@ -57,7 +59,18 @@ export default function Dashboard() {
 
   // --- Handlers ---
   const closeDetailModal = () => { setIsClosing(true); setTimeout(() => { setViewLog(null); setIsClosing(false); }, 300); };
-  const openDatePicker = () => { try { dateInputRef.current?.showPicker(); } catch { dateInputRef.current?.click(); } };
+  
+  const openDatePicker = () => { 
+    if (dateInputRef.current) {
+        if (typeof dateInputRef.current.showPicker === 'function') {
+            dateInputRef.current.showPicker();
+        } else {
+            dateInputRef.current.focus();
+            dateInputRef.current.click();
+        }
+    }
+  };
+
   const toggleDone = (key: 's1' | 's2' | 's3') => { setDoneSets(prev => ({ ...prev, [key]: !prev[key] })); if (navigator.vibrate) navigator.vibrate(10); };
   
   const handleExerciseChange = (code: string) => { setSelectedCode(code); if (sheets[code]) initForm(code, sheets[code]); };
@@ -199,7 +212,7 @@ export default function Dashboard() {
                     const isActive = selectedCode === code;
                     return (
                         <button key={code} onClick={() => handleExerciseChange(code)} 
-                        className={`shrink-0 px-7 py-4 rounded-[24px] font-black text-xl tracking-tight transition-all duration-300 active:scale-95 ${isActive ? 'bg-primary text-white shadow-[0_8px_30px_rgb(var(--primary)/0.3)] scale-105' : 'bg-secondary text-muted-foreground'}`}>
+                        className={`shrink-0 px-7 py-4 rounded-[24px] font-black text-xl tracking-tight transition-all duration-300 active:scale-95 ${isActive ? 'bg-primary text-white scale-105' : 'bg-secondary text-muted-foreground'}`}>
                             {code}
                         </button>
                     )})}
@@ -239,7 +252,7 @@ export default function Dashboard() {
              )}
 
              {/* Date Card */}
-             <div onClick={openDatePicker} className="bg-card rounded-[32px] p-6 flex items-center justify-between shadow-sm border border-white/5 cursor-pointer active:scale-[0.98] transition-all duration-200">
+             <div onClick={openDatePicker} className="bg-card rounded-[32px] p-6 flex items-center justify-between shadow-sm border border-white/5 cursor-pointer active:scale-[0.98] transition-all duration-200 relative">
                 <div>
                     <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Date</div>
                     <div className="text-2xl font-black font-variant-numeric">{todayDate}</div>
@@ -247,7 +260,13 @@ export default function Dashboard() {
                 <div className="w-12 h-12 rounded-full bg-secondary dark:bg-white/5 flex items-center justify-center text-primary">
                     <Icons.Calendar/>
                 </div>
-                <Input ref={dateInputRef} type="date" value={todayDate} onChange={(e) => setTodayDate(e.target.value)} className="hidden"/>
+                <Input 
+                    ref={dateInputRef} 
+                    type="date" 
+                    value={todayDate} 
+                    onChange={(e) => setTodayDate(e.target.value)} 
+                    className="absolute bottom-0 left-0 w-full h-full opacity-0 z-0 pointer-events-none"
+                />
              </div>
 
              {is531 && preview ? (
@@ -265,15 +284,31 @@ export default function Dashboard() {
                             </div>
                         </div>
                         
-                        <div className="bg-card rounded-[32px] p-6 flex flex-col items-center justify-center relative shadow-sm border border-white/5 cursor-pointer active:scale-[0.98] transition-all duration-200">
+                        {/* Session Card - Div 클릭 시 강제 열림 */}
+                        <div 
+                            onClick={() => setIsSessionOpen(true)} 
+                            className="bg-card rounded-[32px] p-6 flex flex-col items-center justify-center relative shadow-sm border border-white/5 cursor-pointer active:scale-[0.98] transition-all duration-200"
+                        >
                             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Session</span>
                             <div className="flex items-center gap-2 text-4xl font-black text-primary">
                                 {session.toUpperCase()}
                                 <Icons.ArrowDown/>
                             </div>
-                            <Select value={session} onValueChange={(v: any) => setSession(v)}>
-                                <SelectTrigger className="absolute inset-0 !w-full !h-full opacity-0 z-10 cursor-pointer border-none p-0 bg-transparent"><SelectValue/></SelectTrigger>
-                                <SelectContent><SelectItem value="a">A (5+)</SelectItem><SelectItem value="b">B (3+)</SelectItem><SelectItem value="c">C (1+)</SelectItem></SelectContent>
+
+                            <Select 
+                                open={isSessionOpen} 
+                                onOpenChange={setIsSessionOpen} 
+                                value={session} 
+                                onValueChange={(v: any) => setSession(v)}
+                            >
+                                <SelectTrigger className="w-0 h-0 opacity-0 p-0 m-0 border-none shadow-none text-[0px] absolute">
+                                    <SelectValue placeholder={session.toUpperCase()} />
+                                </SelectTrigger>
+                                <SelectContent className="bg-card border-white/10 text-foreground rounded-2xl p-2 min-w-[120px] font-bold z-50">
+                                    <SelectItem value="a" className="rounded-xl py-3 pl-4 focus:bg-secondary/50 focus:text-primary cursor-pointer">A (5+)</SelectItem>
+                                    <SelectItem value="b" className="rounded-xl py-3 pl-4 focus:bg-secondary/50 focus:text-primary cursor-pointer">B (3+)</SelectItem>
+                                    <SelectItem value="c" className="rounded-xl py-3 pl-4 focus:bg-secondary/50 focus:text-primary cursor-pointer">C (1+)</SelectItem>
+                                </SelectContent>
                             </Select>
                         </div>
                     </div>
@@ -317,12 +352,13 @@ export default function Dashboard() {
              ) : (
                 // Custom Layout
                 <>
-                    <div className="bg-card rounded-[32px] p-8 flex flex-col items-center justify-center relative shadow-sm border border-white/5">
-                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">Target Weight</span>
+                    {/* [수정] DL/OHP Target Weight Card - Compact Design */}
+                    <div className="bg-card rounded-[32px] p-6 flex flex-col items-center justify-center relative shadow-sm border border-white/5">
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Target Weight</span>
                         <div className="flex items-center justify-center gap-2">
                             <Input 
                                 type="number" value={weight.toString()} onChange={(e) => setWeight(Number(e.target.value))} 
-                                className="w-full h-32 text-center !bg-transparent !border-none !shadow-none !ring-0 text-6xl font-black leading-none p-0 text-foreground"
+                                className="w-full h-20 text-center !bg-transparent !border-none !shadow-none !ring-0 text-5xl font-black leading-none p-0 text-foreground"
                             />
                             <span className="text-xl font-bold text-muted-foreground mt-4 shrink-0">kg</span>
                         </div>
@@ -402,7 +438,6 @@ export default function Dashboard() {
 
       {/* 3. Floating Tab Bar */}
       <div className="fixed bottom-8 left-0 right-0 px-8 z-50 flex justify-center pointer-events-none">
-        {/* [수정] p-2 -> p-2.5로 패딩 증가 */}
         <div className="pointer-events-auto bg-background/80 backdrop-blur-2xl border border-white/10 rounded-full shadow-2xl p-2.5 flex items-center gap-4">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-auto">
                 <TabsList className="bg-transparent h-auto p-0 flex gap-4">
@@ -410,7 +445,6 @@ export default function Dashboard() {
                         <TabsTrigger 
                             key={tab} 
                             value={tab} 
-                            // [수정] w-12 h-12 (48px)로 조정 (w-14보다 작게, w-10보다 크게)
                             className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 shadow-none border-none active:scale-90
                                 data-[state=active]:bg-primary data-[state=active]:text-white text-muted-foreground
                                 data-[state=active]:shadow-[0_0_15px_rgba(var(--primary),0.5)]
