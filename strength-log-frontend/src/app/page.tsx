@@ -12,6 +12,8 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 export default function Dashboard() {
   // --- 1. State ---
   const [loading, setLoading] = useState(true);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
   const [config, setConfig] = useState<UserConfig | null>(null);
   const [sheets, setSheets] = useState<Record<string, WorkoutLog>>({});
   
@@ -49,12 +51,14 @@ export default function Dashboard() {
         setSheets(dashData.sheets);
         if (dashData.sheets["SQ"]) initForm("SQ", dashData.sheets["SQ"]);
 
+        setHistoryLoading(true);
         const histRes = await fetch(`${API_URL}/api/history?code=SQ`);
         if (histRes.ok) {
             const histData = await histRes.json();
             setHistoryLogs(histData || []);
         }
         setLoading(false);
+        setHistoryLoading(false);
       } catch (err) { console.error(err); }
     };
     fetchData();
@@ -62,6 +66,8 @@ export default function Dashboard() {
 
   useEffect(() => {
     const fetchHistory = async () => {
+      setHistoryLoading(true);
+      setHistoryLogs([]);
       try {
         const res = await fetch(`${API_URL}/api/history?code=${selectedCode}`);
         if (res.ok) {
@@ -69,8 +75,11 @@ export default function Dashboard() {
             setHistoryLogs(data || []);
         }
       } catch (err) { console.error(err); }
+      finally { setHistoryLoading(false); }
     };
-    fetchHistory();
+    if (activeTab === 'history' || !loading) { 
+        fetchHistory();
+    }
   }, [selectedCode]);
 
   // --- 3. Handlers ---
@@ -211,26 +220,36 @@ export default function Dashboard() {
     <div className="flex flex-col h-[100dvh] bg-black text-white font-sans overflow-hidden relative">
       
       {/* Header (Fixed & Blurred) */}
-      {/* [수정] pt-16 -> pt-12: 상단 여백 축소 */}
-      <div className="fixed top-0 left-0 right-0 z-50 px-6 pt-12 pb-6 bg-zinc-950/90 backdrop-blur-xl border-b border-white/5 flex justify-between items-center transition-all duration-300 gap-4">
+      <div className="fixed top-0 left-0 right-0 z-50 px-6 pt-12 pb-4 bg-zinc-950/90 backdrop-blur-xl border-b border-white/5 flex justify-between items-center transition-all duration-300 gap-4">
           <div>
-            <h1 className="text-3xl font-black tracking-tighter text-white leading-[0.9]">Strength<br/>Logger</h1>
-            <div className="flex items-center gap-2 mt-2">
-              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"/>
+            <h1 className="text-2xl font-black tracking-tighter text-white leading-none">Strength Logger</h1>
+            <div className="flex items-center gap-2 mt-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"/>
               <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">System Ready</span>
             </div>
           </div>
-          {activeTab !== 'settings' && (
-            <div className="bg-zinc-900/80 rounded-full px-4 py-2 border border-zinc-800 flex items-center gap-2">
-               <span className="text-[10px] text-zinc-500 font-bold">DATE</span>
-               <Input type="date" value={todayDate} onChange={(e) => setTodayDate(e.target.value)} className="w-auto bg-transparent border-none text-sm font-bold text-white p-0 h-auto focus:ring-0" />
-            </div>
-          )}
       </div>
 
-      {/* Content (Adjusted padding-top) */}
-      {/* [수정] pt-52 -> pt-44: 헤더 높이 줄어듦에 따라 본문도 위로 올림 */}
-      <div className="flex-1 overflow-y-auto px-5 pt-44 pb-32 space-y-6 scrollbar-hide">
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto px-5 pt-32 pb-32 space-y-6 scrollbar-hide">
+        
+        {/* Workout Date Card */}
+        {activeTab !== 'settings' && (
+            <div className="relative bg-zinc-900 rounded-[24px] p-6 border border-zinc-800/50 mb-2 flex items-center group active:scale-[0.98] transition-all">
+               <div>
+                  <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">Workout Date</div>
+                  <div className="text-3xl font-black text-white tracking-tighter">{todayDate}</div>
+               </div>
+               
+               <Input 
+                 type="date" 
+                 value={todayDate} 
+                 onChange={(e) => setTodayDate(e.target.value)} 
+                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
+               />
+            </div>
+        )}
+
         {/* Exercise Selector */}
         {activeTab !== 'settings' && (
           <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide snap-x">
@@ -254,12 +273,26 @@ export default function Dashboard() {
         {/* RECORD TAB */}
         {activeTab === "record" && (
           <div key={selectedCode} className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+             
+             {/* Last Session Info */}
              {currentLog && currentLog.workout_date && (
                 <div className="flex items-center justify-between p-5 bg-zinc-900/50 rounded-2xl border border-zinc-800">
                     <div>
                         <div className="flex items-center gap-2 mb-2">
-                        <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest bg-zinc-950 px-2 py-1 rounded">{currentLog.workout_date}</span>
-                        {currentLog.exercise_type === "531" && <span className="text-[10px] font-bold text-white bg-violet-600 px-2 py-1 rounded shadow-[0_0_10px_rgba(124,58,237,0.4)]">TM {currentLog.data.tm}kg</span>}
+                            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest bg-zinc-950 px-2 py-1 rounded">{currentLog.workout_date}</span>
+                            {/* 5/3/1 Info */}
+                            {currentLog.exercise_type === "531" && (
+                                <>
+                                    {currentLog.data.session && (
+                                        <span className="text-[10px] font-bold text-zinc-400 bg-zinc-800 border border-zinc-700 px-2 py-1 rounded">
+                                            {currentLog.data.session.toUpperCase()}
+                                        </span>
+                                    )}
+                                    <span className="text-[10px] font-bold text-white bg-violet-600 px-2 py-1 rounded shadow-[0_0_10px_rgba(124,58,237,0.4)]">
+                                        TM {currentLog.data.tm}kg
+                                    </span>
+                                </>
+                            )}
                         </div>
                         <div className="text-lg font-bold text-white">
                         {currentLog.exercise_type === "531" ? `Top: ${currentLog.data.top_weight}kg × ${currentLog.data.s3_reps}` : `${currentLog.data.weight}kg`}
@@ -270,6 +303,7 @@ export default function Dashboard() {
              )}
 
              {is531 && preview ? (
+                // ========== 5/3/1 UI ==========
                 <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-3">
                         <div className="relative w-full h-40">
@@ -312,8 +346,7 @@ export default function Dashboard() {
                     ))}
                     </div>
 
-                    <div onClick={() => toggleDone('s3')} className={`relative p-5 rounded-[32px] border-2 transition-all cursor-pointer overflow-hidden group select-none ${doneSets.s3 ? 'bg-green-500 border-green-500' : 'bg-zinc-800 border-zinc-700'}`}>
-                        {!doneSets.s3 && <div className="absolute top-0 right-0 w-64 h-64 bg-violet-600/20 blur-[80px] rounded-full pointer-events-none group-hover:bg-violet-600/30 transition-all"/>}
+                    <div onClick={() => toggleDone('s3')} className={`relative p-5 rounded-[32px] border-2 transition-all cursor-pointer overflow-hidden group select-none ${doneSets.s3 ? 'bg-green-500 border-green-500' : 'bg-zinc-900 border-zinc-700'}`}>
                         <div className="relative z-10 flex flex-col items-center text-center">
                             <div className={`text-xs font-black tracking-[0.3em] uppercase mb-3 ${doneSets.s3 ? 'text-black/70' : 'text-violet-400'}`}>Top Set Target</div>
                             <div className="flex items-baseline gap-1 mb-4">
@@ -321,7 +354,7 @@ export default function Dashboard() {
                                 <span className={`text-lg font-bold ${doneSets.s3 ? 'text-black/60' : 'text-zinc-500'}`}>kg</span>
                             </div>
                             <div onClick={(e) => e.stopPropagation()} className="w-full max-w-[120px]">
-                                <Input placeholder="?" value={actualReps.s3} onFocus={(e) => e.target.select()} onChange={(e) => setActualReps({...actualReps, s3: e.target.value})} type="number" className={`h-14 text-center text-3xl font-black rounded-2xl border-none focus-visible:ring-0 shadow-xl ${doneSets.s3 ? 'bg-black/20 text-black placeholder:text-black/40' : 'bg-black/50 text-white placeholder:text-zinc-700'}`} />
+                                <Input placeholder="?" value={actualReps.s3} onFocus={(e) => e.target.select()} onChange={(e) => setActualReps({...actualReps, s3: e.target.value})} type="number" className={`h-14 text-center text-3xl font-black rounded-2xl border-none focus-visible:ring-0 shadow-xl ${doneSets.s3 ? 'bg-black/20 text-black placeholder:text-black/40' : 'bg-black/40 text-white placeholder:text-zinc-700'}`} />
                                 <div className={`text-[9px] font-bold tracking-widest mt-2 ${doneSets.s3 ? 'text-black/70' : 'text-zinc-500'}`}>AMRAP REPS</div>
                             </div>
                         </div>
@@ -338,11 +371,74 @@ export default function Dashboard() {
                     </div>
                 </div>
              ) : (
-                // Custom UI
-                <div className="bg-zinc-900 rounded-[32px] p-8 text-center space-y-8">
-                    <div className="text-xs text-zinc-500 font-bold uppercase tracking-widest mb-4">Target Weight</div>
-                    <Input type="number" value={weight || ""} onFocus={(e) => e.target.select()} onChange={(e) => setWeight(Number(e.target.value))} className="bg-transparent border-b-2 border-zinc-700 rounded-none text-center text-8xl font-black text-white w-full h-32 p-0 focus-visible:ring-0" />
-                    <div className="pt-8">
+                // ========== Custom UI (DL, OHP) - Unification ==========
+                <div className="space-y-4">
+                    {/* Weight Input */}
+                    <div className="relative p-6 rounded-[32px] border-2 border-zinc-800 bg-zinc-900 flex flex-col items-center justify-center">
+                        <div className="text-xs font-black tracking-[0.3em] uppercase mb-4 text-zinc-500">Target Weight</div>
+                        <div className="flex items-baseline gap-1">
+                            <Input 
+                                type="number" 
+                                value={weight || ""} 
+                                onFocus={(e) => e.target.select()} 
+                                onChange={(e) => setWeight(Number(e.target.value))} 
+                                className="bg-transparent border-none text-center text-6xl font-black text-white h-auto p-0 focus-visible:ring-0 w-40" 
+                            />
+                            <span className="text-xl font-bold text-zinc-600">kg</span>
+                        </div>
+                    </div>
+
+                    {/* DEADLIFT (1 Set) */}
+                    {selectedCode === "DL" && (
+                        <div 
+                            onClick={() => toggleDone('s1')}
+                            className={`flex items-center justify-between p-5 rounded-3xl border-2 transition-all cursor-pointer select-none ${doneSets.s1 ? 'bg-green-500 border-green-500' : 'bg-zinc-900 border-zinc-800'}`}
+                        >
+                            <span className={`text-[10px] font-bold uppercase tracking-widest ${doneSets.s1 ? 'text-black/60' : 'text-zinc-500'}`}>Target Reps</span>
+                            <div onClick={(e) => e.stopPropagation()} className="w-20">
+                                {/* [수정] 배경색 스타일 통일 (완료시 검정/20, 미완료시 검정/40) */}
+                                <Input 
+                                    type="number" 
+                                    value={reps || ""} 
+                                    onFocus={(e) => e.target.select()} 
+                                    onChange={(e) => setReps(Number(e.target.value))} 
+                                    className={`h-12 text-center text-xl font-bold rounded-xl border-none focus-visible:ring-0 ${doneSets.s1 ? 'bg-black/20 text-black placeholder:text-black/40' : 'bg-black/40 text-white'}`} 
+                                />
+                                <div className={`text-[8px] text-center font-bold mt-1 ${doneSets.s1 ? 'text-black/60' : 'text-zinc-500'}`}>REPS</div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* OHP (3 Sets) */}
+                    {selectedCode === "OHP" && (
+                        <div className="space-y-2">
+                            {['s1', 's2', 's3'].map((key, i) => {
+                                const isDone = doneSets[key as keyof typeof doneSets];
+                                return (
+                                    <div 
+                                        key={key} 
+                                        onClick={() => toggleDone(key as keyof typeof doneSets)}
+                                        className={`flex items-center justify-between p-5 rounded-3xl border-2 transition-all cursor-pointer select-none ${isDone ? 'bg-green-500 border-green-500' : 'bg-zinc-900 border-zinc-800'}`}
+                                    >
+                                        <span className={`text-[10px] font-bold uppercase tracking-widest ${isDone ? 'text-black/60' : 'text-zinc-500'}`}>SET {i+1}</span>
+                                        <div onClick={(e) => e.stopPropagation()} className="w-20">
+                                            {/* [수정] 배경색 스타일 통일 */}
+                                            <Input 
+                                                type="number" 
+                                                value={ohpSets[key as keyof typeof ohpSets] || ""} 
+                                                onFocus={(e) => e.target.select()} 
+                                                onChange={(e) => setOhpSets({...ohpSets, [key]: Number(e.target.value)})} 
+                                                className={`h-12 text-center text-xl font-bold rounded-xl border-none focus-visible:ring-0 ${isDone ? 'bg-black/20 text-black placeholder:text-black/40' : 'bg-black/40 text-white'}`} 
+                                            />
+                                            <div className={`text-[8px] text-center font-bold mt-1 ${isDone ? 'text-black/60' : 'text-zinc-500'}`}>REPS</div>
+                                        </div>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    )}
+
+                    <div className="pt-4 pb-4">
                         <Button 
                             className="w-full h-20 rounded-[28px] text-xl font-black bg-violet-600 text-white hover:bg-violet-500 shadow-[0_0_30px_rgba(124,58,237,0.5)] transition-all active:scale-[0.98]" 
                             onClick={handleSave}
@@ -358,7 +454,12 @@ export default function Dashboard() {
         {/* HISTORY TAB */}
         {activeTab === "history" && (
           <div key={`history-${selectedCode}`} className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-             {historyLogs.length > 0 ? (
+             {historyLoading ? (
+               <div className="flex flex-col items-center justify-center mt-32 text-zinc-600">
+                  <div className="w-8 h-8 border-4 border-zinc-700 border-t-white rounded-full animate-spin mb-4"></div>
+                  <p className="text-xs font-bold tracking-widest uppercase">Loading...</p>
+               </div>
+             ) : historyLogs.length > 0 ? (
                historyLogs.map((log) => (
                  <div key={log.id} onClick={() => setViewLog(log)} className="bg-zinc-900 rounded-[24px] p-5 flex items-center gap-5 mb-3 border border-zinc-800/50 hover:bg-zinc-800 transition-colors cursor-pointer active:scale-95 duration-200">
                     <div className="w-14 h-14 bg-zinc-800 rounded-2xl flex flex-col items-center justify-center shrink-0 border border-zinc-700/50">
