@@ -5,7 +5,7 @@ on:
     branches: [ "main" ]
 
 jobs:
-  # 1. 깃허브 슈퍼컴퓨터로 빌드해서 Docker Hub에 올리는 작업
+  # 1. 빌드 및 Docker Hub 푸시 (이건 외부망 써도 상관없음)
   build-and-push:
     runs-on: ubuntu-latest
     steps:
@@ -18,33 +18,42 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # 백엔드 빌드 & 푸시
       - name: Build and push Backend
         uses: docker/build-push-action@v4
         with:
-          context: ./strength-log-backend  # 👈 백엔드 폴더명 확인!
+          context: ./strength-log-backend
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/strength-log-backend:latest
 
-      # 프론트엔드 빌드 & 푸시
       - name: Build and push Frontend
         uses: docker/build-push-action@v4
         with:
-          context: ./strength-log-frontend     # 👈 프론트엔드 폴더명 확인!
+          context: ./strength-log-frontend
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/strength-log-frontend:latest
           build-args: |
             NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}
 
-  # 2. 서버한테 "새거 나왔으니 가져가!" 라고 명령하는 작업
+  # 2. 서버 배포 (여기가 핵심! Tailscale 터널링 필요)
   deploy-to-server:
-    needs: build-and-push # 위 작업이 성공해야만 실행됨
+    needs: build-and-push
     runs-on: ubuntu-latest
     steps:
+      # [추가됨] Tailscale 연결 (OAuth 방식)
+      # SSH 접속 전에 무조건 먼저 실행되어야 합니다.
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@v2
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci  # ⚠️ 중요: 아까 Tailscale에서 Credential 만들 때 지정한 태그를 적으세요!
+          version: 1.42.0
+
+      # [기존] SSH 접속 (이제 Tailscale IP로 접속함)
       - name: Tell Server to Pull Image
         uses: appleboy/ssh-action@master
         with:
-          host: ${{ secrets.HOST }}
+          host: ${{ secrets.HOST }}  # ⚠️ 확인: 여기가 100.x.x.x (Tailscale IP)여야 합니다!
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.SSH_KEY }}
           port: 22
@@ -52,11 +61,11 @@ jobs:
             cd strength-log
             git pull origin main
             
-            # 1. 최신 이미지 다운로드 (서버는 다운만 받음!)
+            # 최신 이미지 다운로드
             docker compose pull
             
-            # 2. 갈아끼우기 (순식간에 끝남)
+            # 갈아끼우기
             docker compose up -d
             
-            # 3. 찌꺼기 청소
+            # 찌꺼기 청소
             docker image prune -f
