@@ -16,10 +16,11 @@ import (
 // ---------------------------------------------------------
 
 type UserConfig struct {
-	ID           int     `json:"id"`
-	BodyWeight   float64 `json:"body_weight"`
-	UnitStandard float64 `json:"unit_standard"`
-	UnitPullup   float64 `json:"unit_pullup"`
+	ID            int     `json:"id"`
+	BodyWeight    float64 `json:"body_weight"`
+	UnitStandard  float64 `json:"unit_standard"`
+	UnitPullup    float64 `json:"unit_pullup"`
+	ExerciseOrder string  `json:"exercise_order"` // [추가] 운동 순서 ("SQ,BP,PU...")
 }
 
 type WorkoutLog struct {
@@ -93,13 +94,18 @@ func handleConfig(w http.ResponseWriter, r *http.Request) {
 	// 1. 설정 조회 (GET)
 	if r.Method == "GET" {
 		var config UserConfig
-		// DB에 값이 없으면 기본값 반환하도록 처리
-		err := db.QueryRow("SELECT body_weight, unit_standard, unit_pullup FROM user_config LIMIT 1").Scan(
-			&config.BodyWeight, &config.UnitStandard, &config.UnitPullup,
+		// [수정] exercise_order 조회 추가 (NULL일 경우 빈 문자열 반환을 위해 COALESCE 사용)
+		err := db.QueryRow("SELECT body_weight, unit_standard, unit_pullup, COALESCE(exercise_order, '') FROM user_config LIMIT 1").Scan(
+			&config.BodyWeight, &config.UnitStandard, &config.UnitPullup, &config.ExerciseOrder,
 		)
 		if err != nil {
 			// 값이 없으면 기본값 리턴
-			json.NewEncoder(w).Encode(UserConfig{BodyWeight: 75.0, UnitStandard: 2.5, UnitPullup: 1.0})
+			json.NewEncoder(w).Encode(UserConfig{
+				BodyWeight:    75.0,
+				UnitStandard:  2.5,
+				UnitPullup:    1.0,
+				ExerciseOrder: "SQ,BP,PU,DL,OHP", // 기본 순서
+			})
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -116,16 +122,17 @@ func handleConfig(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// 항상 ID=1인 행을 업데이트 (싱글 유저 가정)
-		// 값이 없으면 INSERT, 있으면 UPDATE (Upsert)
+		// [수정] exercise_order 컬럼 추가
 		query := `
-            INSERT INTO user_config (id, body_weight, unit_standard, unit_pullup)
-            VALUES (1, $1, $2, $3)
+            INSERT INTO user_config (id, body_weight, unit_standard, unit_pullup, exercise_order)
+            VALUES (1, $1, $2, $3, $4)
             ON CONFLICT (id) DO UPDATE 
             SET body_weight = EXCLUDED.body_weight,
                 unit_standard = EXCLUDED.unit_standard,
-                unit_pullup = EXCLUDED.unit_pullup
+                unit_pullup = EXCLUDED.unit_pullup,
+                exercise_order = EXCLUDED.exercise_order
         `
-		_, err := db.Exec(query, req.BodyWeight, req.UnitStandard, req.UnitPullup)
+		_, err := db.Exec(query, req.BodyWeight, req.UnitStandard, req.UnitPullup, req.ExerciseOrder)
 		if err != nil {
 			http.Error(w, "DB Error: "+err.Error(), http.StatusInternalServerError)
 			return
@@ -148,30 +155,35 @@ func handleDashboard(w http.ResponseWriter, r *http.Request) {
 
 	// 1) 사용자 설정 가져오기 (가장 최근 것 1개)
 	var config UserConfig
+	// [수정] exercise_order 조회 추가
 	err := db.QueryRow(`
-		SELECT id, body_weight, unit_standard, unit_pullup 
-		FROM user_config 
-		ORDER BY id DESC LIMIT 1
-	`).Scan(&config.ID, &config.BodyWeight, &config.UnitStandard, &config.UnitPullup)
+        SELECT id, body_weight, unit_standard, unit_pullup, COALESCE(exercise_order, '') 
+        FROM user_config 
+        ORDER BY id DESC LIMIT 1
+    `).Scan(&config.ID, &config.BodyWeight, &config.UnitStandard, &config.UnitPullup, &config.ExerciseOrder)
 
 	if err != nil {
 		// 설정이 없으면 기본값 사용
-		config = UserConfig{BodyWeight: 75.0, UnitStandard: 2.5, UnitPullup: 1.0}
+		config = UserConfig{
+			BodyWeight:    75.0,
+			UnitStandard:  2.5,
+			UnitPullup:    1.0,
+			ExerciseOrder: "SQ,BP,PU,DL,OHP",
+		}
 	}
 
-	// 2) 종목별 최신 기록 가져오기 (Postgres의 강력한 기능 DISTINCT ON 사용!)
-	// 해석: 각 운동 코드(exercise_code)별로 그룹을 짓고, 날짜가 가장 최근인 놈 1개만 뽑아라.
+	// 2) 종목별 최신 기록 가져오기
 	query := `
-		SELECT DISTINCT ON (e.code) 
-			e.code, e.name, e.type,
-			COALESCE(l.id, 0),
-			COALESCE(TO_CHAR(l.workout_date, 'YYYY-MM-DD'), ''),
-			COALESCE(l.data, '{}'), 
-			COALESCE(l.memo, '')
-		FROM exercises e
-		LEFT JOIN workout_logs l ON e.code = l.exercise_code
-		ORDER BY e.code, l.workout_date DESC, l.id DESC
-	`
+        SELECT DISTINCT ON (e.code) 
+            e.code, e.name, e.type,
+            COALESCE(l.id, 0),
+            COALESCE(TO_CHAR(l.workout_date, 'YYYY-MM-DD'), ''),
+            COALESCE(l.data, '{}'), 
+            COALESCE(l.memo, '')
+        FROM exercises e
+        LEFT JOIN workout_logs l ON e.code = l.exercise_code
+        ORDER BY e.code, l.workout_date DESC, l.id DESC
+    `
 
 	rows, err := db.Query(query)
 	if err != nil {
@@ -211,7 +223,7 @@ func handleDashboard(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(resp)
 }
 
-// 1. 저장 요청용 구조체 정의 (핸들러 함수 바로 위에 추가해주세요)
+// 1. 저장 요청용 구조체 정의
 type CreateLogRequest struct {
 	WorkoutDate  string          `json:"workout_date"`
 	ExerciseCode string          `json:"exercise_code"`
@@ -219,7 +231,7 @@ type CreateLogRequest struct {
 	Memo         string          `json:"memo"`
 }
 
-// 2. 저장 핸들러 구현 (기존 함수 교체)
+// 2. 저장 핸들러 구현
 // POST /api/workouts
 func handleSaveWorkout(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
@@ -241,11 +253,10 @@ func handleSaveWorkout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 3) DB 저장 (INSERT)
-	// data 컬럼은 JSONB 타입이므로, []byte 타입을 그대로 넘기면 됩니다.
 	query := `
-		INSERT INTO workout_logs (workout_date, exercise_code, data, memo)
-		VALUES ($1, $2, $3, $4)
-	`
+        INSERT INTO workout_logs (workout_date, exercise_code, data, memo)
+        VALUES ($1, $2, $3, $4)
+    `
 	_, err := db.Exec(query, req.WorkoutDate, req.ExerciseCode, req.Data, req.Memo)
 	if err != nil {
 		log.Printf("DB Insert Error: %v", err) // 서버 로그에 에러 출력
@@ -270,18 +281,18 @@ func handleHistory(w http.ResponseWriter, r *http.Request) {
 
 	// 기본 쿼리
 	query := `
-		SELECT 
-			l.id, 
-			TO_CHAR(l.workout_date, 'YYYY-MM-DD'), 
-			l.exercise_code, 
-			e.name, 
-			e.type,
-			l.data, 
-			l.memo
-		FROM workout_logs l
-		JOIN exercises e ON l.exercise_code = e.code
-		WHERE 1=1
-	`
+        SELECT 
+            l.id, 
+            TO_CHAR(l.workout_date, 'YYYY-MM-DD'), 
+            l.exercise_code, 
+            e.name, 
+            e.type,
+            l.data, 
+            l.memo
+        FROM workout_logs l
+        JOIN exercises e ON l.exercise_code = e.code
+        WHERE 1=1
+    `
 
 	var args []interface{}
 	paramCount := 1

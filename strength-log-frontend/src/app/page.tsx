@@ -5,7 +5,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DashboardResponse, UserConfig, WorkoutLog } from "@/types/api";
+import { DashboardResponse, WorkoutLog } from "@/types/api";
+// Framer Motion (드래그 앤 드롭)
+import { Reorder } from "framer-motion";
+
+// UserConfig 인터페이스
+interface UserConfig {
+  id: number;
+  body_weight: number;
+  unit_standard: number;
+  unit_pullup: number;
+  exercise_order?: string; 
+}
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
@@ -15,7 +26,8 @@ const Icons = {
   History: () => <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>,
   Settings: () => <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>,
   ArrowDown: () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>,
-  Calendar: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+  Calendar: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
+  Grip: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground"><circle cx="9" cy="12" r="1" /><circle cx="9" cy="5" r="1" /><circle cx="9" cy="19" r="1" /><circle cx="15" cy="12" r="1" /><circle cx="15" cy="5" r="1" /><circle cx="15" cy="19" r="1" /></svg>
 };
 
 // --- GhostInput Component ---
@@ -54,7 +66,9 @@ export default function Dashboard() {
   const [rpe, setRpe] = useState(8);
   const [ohpSets, setOhpSets] = useState({ s1: 5, s2: 5, s3: 5 });
   const [memo, setMemo] = useState("");
-  const [settingsForm, setSettingsForm] = useState<UserConfig>({ id: 0, body_weight: 0, unit_standard: 0, unit_pullup: 0 });
+  
+  const [settingsForm, setSettingsForm] = useState<UserConfig>({ id: 0, body_weight: 0, unit_standard: 0, unit_pullup: 0, exercise_order: "SQ,BP,PU,DL,OHP" });
+  const [displayOrder, setDisplayOrder] = useState(["SQ", "BP", "PU", "DL", "OHP"]);
 
   const dateInputRef = useRef<HTMLInputElement>(null);
 
@@ -83,6 +97,11 @@ export default function Dashboard() {
     else if (log.exercise_type.startsWith("custom")) { setWeight(data.weight || (code === "DL" ? 100 : 40)); }
   };
 
+  const handleReorder = (newOrder: string[]) => {
+    setDisplayOrder(newOrder);
+    setSettingsForm(prev => ({ ...prev, exercise_order: newOrder.join(",") }));
+  };
+
   const preview = useMemo(() => {
     if (!config || !selectedCode) return null;
     const isPullUp = selectedCode === "PU";
@@ -98,17 +117,30 @@ export default function Dashboard() {
 
   useEffect(() => { if (preview) setActualReps(prev => ({ ...prev, s1: preview.s1_target, s2: preview.s2_target })); }, [preview?.s1_target, preview?.s2_target]);
 
+  // Data Fetching
   useEffect(() => {
     const fetchData = async () => {
       try {
         const dashRes = await fetch(`${API_URL}/api/dashboard`);
         const dashData = await dashRes.json();
         setConfig(dashData.config);
-        if (dashData.config) setSettingsForm(dashData.config);
+        if (dashData.config) {
+            setSettingsForm(dashData.config);
+            if (dashData.config.exercise_order) {
+                const order = dashData.config.exercise_order.split(",");
+                if (order.length > 0) {
+                    setDisplayOrder(order);
+                    if (!order.includes(selectedCode)) setSelectedCode(order[0]);
+                }
+            }
+        }
         setSheets(dashData.sheets);
-        if (dashData.sheets["SQ"]) initForm("SQ", dashData.sheets["SQ"]);
+        const firstCode = dashData.config?.exercise_order ? dashData.config.exercise_order.split(",")[0] : "SQ";
+        if (dashData.sheets[firstCode]) initForm(firstCode, dashData.sheets[firstCode]);
+        else setSelectedCode(firstCode); 
+
         setHistoryLoading(true);
-        const histRes = await fetch(`${API_URL}/api/history?code=SQ`);
+        const histRes = await fetch(`${API_URL}/api/history?code=${selectedCode}`);
         if (histRes.ok) setHistoryLogs(await histRes.json() || []);
         setLoading(false); setHistoryLoading(false);
       } catch (err) { console.error(err); }
@@ -145,7 +177,15 @@ export default function Dashboard() {
 
   const handleSaveConfig = async () => {
     setLoading(true);
-    try { await fetch(`${API_URL}/api/config`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(settingsForm) }); alert("Saved"); setConfig(settingsForm); } catch(e) {} finally { setLoading(false); }
+    try { 
+        await fetch(`${API_URL}/api/config`, { 
+            method: "POST", 
+            headers: { "Content-Type": "application/json" }, 
+            body: JSON.stringify(settingsForm) 
+        }); 
+        alert("Saved"); 
+        setConfig(settingsForm); 
+    } catch(e) {} finally { setLoading(false); }
   };
 
   const calculate1RM = (w: number, r: number) => (!w || !r) ? 0 : Math.round(w * (1 + r / 30));
@@ -172,9 +212,12 @@ export default function Dashboard() {
   const is531 = currentLog?.exercise_type === "531";
 
   return (
-    <div className="flex flex-col h-dvh bg-background text-foreground font-sans selection:bg-primary/30 overflow-hidden overflow-x-hidden">
+    // [수정 1] h-dvh -> min-h-dvh 로 변경하여 브라우저 스크롤 허용 (주소창 작아짐)
+    // overflow-x-hidden은 유지하여 가로 흔들림 방지
+    <div className="flex flex-col min-h-dvh bg-background text-foreground font-sans selection:bg-primary/30 overflow-x-hidden">
       
       {/* 1. Header */}
+      {/* [수정 2] sticky top-0 추가하여 스크롤 시에도 상단 고정 */}
       <div className="pt-[env(safe-area-inset-top)] px-6 pb-2 z-20 sticky top-0 bg-background/80 backdrop-blur-xl border-b border-white/5 transition-all">
         <div className="flex justify-between items-center h-16">
             <h1 className="text-3xl font-black tracking-tighter">
@@ -184,14 +227,14 @@ export default function Dashboard() {
       </div>
 
       {/* 2. Main Content */}
-      {/* [수정] 메인 컨텐츠 영역에도 overflow-x-hidden 추가하여 스크롤 안전장치 마련 */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden pt-4 pb-40 space-y-8 hide-scrollbar">
+      {/* [수정 3] overflow-y-auto 제거, 스크롤은 body가 담당 */}
+      <div className="flex-1 pt-4 pb-40 space-y-8">
         
         {/* Exercise Chips */}
         {activeTab !== 'settings' && (
             <div className="w-full overflow-x-auto py-4 scrollbar-hide">
                 <div className="flex gap-3 px-6 w-max"> 
-                    {["SQ", "BP", "PU", "DL", "OHP"].map((code) => {
+                    {displayOrder.map((code) => {
                     const isActive = selectedCode === code;
                     return (
                         <button key={code} onClick={() => handleExerciseChange(code)} 
@@ -235,7 +278,7 @@ export default function Dashboard() {
              )}
 
              {/* Date Card */}
-             <div onClick={openDatePicker} className="bg-card rounded-[32px] p-6 flex items-center justify-between shadow-sm border border-white/5 cursor-pointer active:scale-[0.98] transition-all duration-200 relative">
+             <div className="bg-card rounded-[32px] p-6 flex items-center justify-between shadow-sm border border-white/5 cursor-pointer active:scale-[0.98] transition-all duration-200 relative">
                 <div>
                     <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Date</div>
                     <div className="text-2xl font-black font-variant-numeric">{todayDate}</div>
@@ -248,7 +291,6 @@ export default function Dashboard() {
                     type="date" 
                     value={todayDate} 
                     onChange={(e) => setTodayDate(e.target.value)} 
-                    // [수정] z-50으로 최상위 배치하여 클릭 가로채기 보장
                     className="absolute inset-0 w-full h-full opacity-0 z-50 cursor-pointer"
                 />
              </div>
@@ -339,7 +381,7 @@ export default function Dashboard() {
                     <div className="bg-card rounded-[32px] p-6 flex flex-col items-center justify-center relative shadow-sm border border-white/5">
                         <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Target Weight</span>
                         <div className="flex items-center justify-center gap-2">
-                            {/* [수정] w-full -> w-40 으로 제한하여 Overflow 방지, 폰트 크기 축소 (text-4xl) */}
+                            {/* w-40으로 너비 고정하여 가로 스크롤 방지 */}
                             <Input 
                                 type="number" value={weight.toString()} onChange={(e) => setWeight(Number(e.target.value))} 
                                 className="w-40 h-20 text-center !bg-transparent !border-none !shadow-none !ring-0 text-4xl font-black leading-none p-0 text-foreground"
@@ -424,6 +466,20 @@ export default function Dashboard() {
                     <span className="font-bold text-lg">Pull-up Inc</span>
                     <div className="w-24 h-14"><GhostInput value={settingsForm.unit_pullup} onChange={(e:any) => setSettingsForm({...settingsForm, unit_pullup: Number(e.target.value)})} /></div>
                 </div>
+                {/* Framer Motion Reorder (드래그 앤 드롭) */}
+                <div className="p-6 border-t border-border/50">
+                    <span className="font-bold text-lg mb-4 block">Exercise Order</span>
+                    <Reorder.Group axis="y" values={displayOrder} onReorder={handleReorder} className="space-y-2">
+                        {displayOrder.map((code) => (
+                            <Reorder.Item key={code} value={code} className="flex items-center justify-between bg-secondary/50 rounded-2xl p-4 shadow-sm active:scale-[0.98] active:bg-secondary cursor-grab active:cursor-grabbing border border-white/5 select-none touch-none">
+                                <span className="text-xl font-black">{code}</span>
+                                <div className="p-2 cursor-grab active:cursor-grabbing">
+                                    <Icons.Grip/>
+                                </div>
+                            </Reorder.Item>
+                        ))}
+                    </Reorder.Group>
+                </div>
              </div>
              <Button className="w-full h-16 rounded-[24px] font-bold text-lg" onClick={handleSaveConfig}>Save Changes</Button>
           </div>
@@ -431,6 +487,7 @@ export default function Dashboard() {
       </div>
 
       {/* 3. Floating Tab Bar */}
+      {/* fixed로 스크롤과 무관하게 하단 고정 */}
       <div className="fixed bottom-8 left-0 right-0 px-8 z-50 flex justify-center pointer-events-none">
         <div className="pointer-events-auto bg-background/80 backdrop-blur-2xl border border-white/10 rounded-full shadow-2xl p-2.5 flex items-center gap-4">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-auto">
