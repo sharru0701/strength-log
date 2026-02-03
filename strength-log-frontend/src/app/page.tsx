@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DashboardResponse, WorkoutLog } from "@/types/api";
+import { WorkoutLog } from "@/types/api"; // DashboardResponse는 안 써서 제거함
 // Framer Motion (드래그 앤 드롭)
 import { Reorder } from "framer-motion";
 
@@ -18,7 +18,8 @@ interface UserConfig {
   exercise_order?: string; 
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+// ⚠️ 주의: 끝에 슬래시(/)가 없어야 합니다.
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://8080-cs-2da8b2c6-a3aa-47a1-aa9d-0ee863dca331.cs-asia-east1-jnrc.cloudshell.dev";
 
 // --- Icons ---
 const Icons = {
@@ -121,7 +122,8 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const dashRes = await fetch(`${API_URL}/api/dashboard`);
+        // [수정 1] credentials: 'include' 추가
+        const dashRes = await fetch(`${API_URL}/api/dashboard`, { credentials: 'include' });
         const dashData = await dashRes.json();
         setConfig(dashData.config);
         if (dashData.config) {
@@ -140,7 +142,8 @@ export default function Dashboard() {
         else setSelectedCode(firstCode); 
 
         setHistoryLoading(true);
-        const histRes = await fetch(`${API_URL}/api/history?code=${selectedCode}`);
+        // [수정 2] credentials: 'include' 추가
+        const histRes = await fetch(`${API_URL}/api/history?code=${selectedCode}`, { credentials: 'include' });
         if (histRes.ok) setHistoryLogs(await histRes.json() || []);
         setLoading(false); setHistoryLoading(false);
       } catch (err) { console.error(err); }
@@ -152,7 +155,8 @@ export default function Dashboard() {
     const fetchHistory = async () => {
       setHistoryLoading(true); setHistoryLogs([]);
       try {
-        const res = await fetch(`${API_URL}/api/history?code=${selectedCode}`);
+        // [수정 3] credentials: 'include' 추가
+        const res = await fetch(`${API_URL}/api/history?code=${selectedCode}`, { credentials: 'include' });
         if (res.ok) setHistoryLogs(await res.json() || []);
       } catch (err) { console.error(err); } finally { setHistoryLoading(false); }
     };
@@ -162,8 +166,11 @@ export default function Dashboard() {
   const handleSave = async () => {
     setLoading(true);
     try {
+      // [수정 4] credentials: 'include' 추가
       const res = await fetch(`${API_URL}/api/workouts`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
+        method: "POST", 
+        credentials: 'include', // ✨ 핵심 수정
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
             workout_date: todayDate, 
             exercise_code: selectedCode, 
@@ -178,8 +185,10 @@ export default function Dashboard() {
   const handleSaveConfig = async () => {
     setLoading(true);
     try { 
+        // [수정 5] credentials: 'include' 추가
         await fetch(`${API_URL}/api/config`, { 
             method: "POST", 
+            credentials: 'include', // ✨ 핵심 수정
             headers: { "Content-Type": "application/json" }, 
             body: JSON.stringify(settingsForm) 
         }); 
@@ -254,17 +263,17 @@ export default function Dashboard() {
              {currentLog && currentLog.workout_date && (
                <div className="bg-card rounded-[24px] p-5 shadow-sm border border-white/5 flex items-center justify-between animate-fade-in">
                   <div>
-                     <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 flex items-center gap-2">
+                      <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 flex items-center gap-2">
                         Last Session <span className="w-1 h-1 rounded-full bg-muted-foreground/50"/> {currentLog.workout_date}
-                     </div>
-                     <div className="flex items-center gap-3">
+                      </div>
+                      <div className="flex items-center gap-3">
                         {currentLog.exercise_type === "531" ? (
                            <>
                               <span className="bg-primary/10 text-primary px-2 py-0.5 rounded text-xs font-bold">{currentLog.data.session?.toUpperCase()} Type</span>
                               <div className="text-sm font-medium text-foreground">
-                                 TM <span className="font-bold">{currentLog.data.tm}</span>
-                                 <span className="mx-1.5 text-muted-foreground/50">|</span>
-                                 AMRAP <span className="font-bold text-primary">{currentLog.data.s3_reps}</span>
+                                  TM <span className="font-bold">{currentLog.data.tm}</span>
+                                  <span className="mx-1.5 text-muted-foreground/50">|</span>
+                                  AMRAP <span className="font-bold text-primary">{currentLog.data.s3_reps}</span>
                               </div>
                            </>
                         ) : (
@@ -272,7 +281,7 @@ export default function Dashboard() {
                               {currentLog.data.weight}kg <span className="text-muted-foreground mx-1">×</span> {currentLog.exercise_code === 'DL' ? currentLog.data.reps : currentLog.data.s3}
                            </div>
                         )}
-                     </div>
+                      </div>
                   </div>
                </div>
              )}
