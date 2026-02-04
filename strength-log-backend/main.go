@@ -61,8 +61,8 @@ func main() {
 
 	// 라우팅 설정
 	http.HandleFunc("/api/config", corsMiddleware(handleConfig))
-	http.HandleFunc("/api/dashboard", corsMiddleware(handleDashboard))  // 조회
-	http.HandleFunc("/api/workouts", corsMiddleware(handleSaveWorkout)) // 저장
+	http.HandleFunc("/api/dashboard", corsMiddleware(handleDashboard)) // 조회
+	http.HandleFunc("/api/workouts", corsMiddleware(handleWorkouts))   // 저장
 	http.HandleFunc("/api/history", corsMiddleware(handleHistory))
 
 	port := ":8080"
@@ -240,41 +240,94 @@ type CreateLogRequest struct {
 }
 
 // 2. 저장 핸들러 구현
-// POST /api/workouts
-func handleSaveWorkout(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+// POST(생성), PUT(수정), DELETE(삭제) 처리
+func handleWorkouts(w http.ResponseWriter, r *http.Request) {
+	// 1. 저장 (INSERT)
+	if r.Method == "POST" {
+		var req CreateLogRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Bad Request: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		if req.WorkoutDate == "" || req.ExerciseCode == "" {
+			http.Error(w, "Missing required fields", http.StatusBadRequest)
+			return
+		}
+
+		query := `
+			INSERT INTO workout_logs (workout_date, exercise_code, data, memo)
+			VALUES ($1, $2, $3, $4)
+		`
+		_, err := db.Exec(query, req.WorkoutDate, req.ExerciseCode, req.Data, req.Memo)
+		if err != nil {
+			log.Printf("DB Insert Error: %v", err)
+			http.Error(w, "DB Error", http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusCreated)
+		fmt.Fprintf(w, `{"message": "Saved successfully"}`)
 		return
 	}
 
-	// 1) 요청 바디 해석
-	var req CreateLogRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Bad Request: "+err.Error(), http.StatusBadRequest)
+	// 2. 수정 (UPDATE)
+	if r.Method == "PUT" {
+		// 수정용 구조체 (ID 포함)
+		type UpdateLogRequest struct {
+			ID           int             `json:"id"`
+			WorkoutDate  string          `json:"workout_date"`
+			ExerciseCode string          `json:"exercise_code"` // 필요 시 수정
+			Data         json.RawMessage `json:"data"`
+			Memo         string          `json:"memo"`
+		}
+
+		var req UpdateLogRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Bad Request", http.StatusBadRequest)
+			return
+		}
+
+		query := `
+			UPDATE workout_logs 
+			SET workout_date = $1, data = $2, memo = $3
+			WHERE id = $4
+		`
+		_, err := db.Exec(query, req.WorkoutDate, req.Data, req.Memo, req.ID)
+		if err != nil {
+			log.Printf("DB Update Error: %v", err)
+			http.Error(w, "DB Error", http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"message": "Updated"}`))
 		return
 	}
 
-	// 2) 유효성 검사 (간단하게)
-	if req.WorkoutDate == "" || req.ExerciseCode == "" {
-		http.Error(w, "Missing required fields", http.StatusBadRequest)
+	// 3. 삭제 (DELETE)
+	if r.Method == "DELETE" {
+		// URL Query로 ID 받기 (/api/workouts?id=123)
+		idStr := r.URL.Query().Get("id")
+		if idStr == "" {
+			http.Error(w, "Missing id", http.StatusBadRequest)
+			return
+		}
+
+		query := `DELETE FROM workout_logs WHERE id = $1`
+		_, err := db.Exec(query, idStr)
+		if err != nil {
+			log.Printf("DB Delete Error: %v", err)
+			http.Error(w, "DB Error", http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"message": "Deleted"}`))
 		return
 	}
 
-	// 3) DB 저장 (INSERT)
-	query := `
-        INSERT INTO workout_logs (workout_date, exercise_code, data, memo)
-        VALUES ($1, $2, $3, $4)
-    `
-	_, err := db.Exec(query, req.WorkoutDate, req.ExerciseCode, req.Data, req.Memo)
-	if err != nil {
-		log.Printf("DB Insert Error: %v", err) // 서버 로그에 에러 출력
-		http.Error(w, "DB Error", http.StatusInternalServerError)
-		return
-	}
-
-	// 4) 성공 응답
-	w.WriteHeader(http.StatusCreated)
-	fmt.Fprintf(w, `{"message": "Saved successfully"}`)
+	http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 }
 
 // GET /api/history
