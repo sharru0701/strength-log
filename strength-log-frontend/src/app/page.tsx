@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { WorkoutLog } from "@/types/api";
-import { Reorder } from "framer-motion";
+import { Reorder, AnimatePresence, motion } from "framer-motion";
 
 interface UserConfig {
   id: number;
@@ -29,7 +29,10 @@ const Icons = {
   Trash: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-red-500"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>,
   Check: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>,
   X: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>,
-  Alert: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-primary"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+  Alert: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-primary"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>,
+  ChevronDown: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>,
+  Scale: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg>,
+  List: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>,
 };
 
 const GhostInput = ({ value, onChange, placeholder, className, isDone, readOnly, onAutoComplete }: any) => {
@@ -62,6 +65,44 @@ const GhostInput = ({ value, onChange, placeholder, className, isDone, readOnly,
   );
 };
 
+const SettingSection = ({ title, icon: Icon, children, defaultOpen = false }: any) => {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+
+  return (
+    <div className="bg-card rounded-[32px] overflow-hidden border border-white/5 shadow-sm mb-4 transition-all">
+      <button 
+        onClick={() => setIsOpen(!isOpen)} 
+        className="w-full flex items-center justify-between p-6 bg-secondary/20 active:bg-secondary/40 transition-colors"
+      >
+        <div className="flex items-center gap-4">
+          <div className="w-10 h-10 rounded-full bg-secondary/50 flex items-center justify-center text-foreground">
+            <Icon />
+          </div>
+          <span className="text-lg font-bold">{title}</span>
+        </div>
+        <div className={`transition-transform duration-300 ${isOpen ? 'rotate-180' : ''} text-muted-foreground`}>
+            <Icons.ChevronDown />
+        </div>
+      </button>
+      
+      <AnimatePresence initial={false}>
+        {isOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3, ease: [0.04, 0.62, 0.23, 0.98] }}
+          >
+            <div className="p-6 pt-2 border-t border-border/50">
+                {children}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
 export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -76,7 +117,7 @@ export default function Dashboard() {
   const [editForm, setEditForm] = useState<any>(null);
 
   const [isClosing, setIsClosing] = useState(false);
-  const [isAlertClosing, setIsAlertClosing] = useState(false); // [NEW] 알림창 닫힘 상태
+  const [isAlertClosing, setIsAlertClosing] = useState(false);
   
   const [selectedCode, setSelectedCode] = useState("SQ");
   const [todayDate, setTodayDate] = useState(new Date().toISOString().split("T")[0]);
@@ -107,7 +148,6 @@ export default function Dashboard() {
       setAlertState({ isOpen: true, title, message, onConfirm, isConfirmType: true });
   };
 
-  // [MODIFIED] History Modal과 동일한 방식으로 애니메이션 적용
   const closeAlert = () => {
       setIsAlertClosing(true);
       setTimeout(() => {
@@ -349,7 +389,7 @@ export default function Dashboard() {
   return (
     <div className="flex flex-col min-h-dvh bg-background text-foreground font-sans selection:bg-primary/30 overflow-x-hidden">
       
-      {/* --- [MODIFIED] Custom Alert Modal (History Modal Style) --- */}
+      {/* --- Alert Modal --- */}
       {alertState.isOpen && (
           <div 
              className={`fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${isAlertClosing ? 'opacity-0' : 'opacity-100'}`} 
@@ -470,31 +510,147 @@ export default function Dashboard() {
 
         {activeTab === "history" && (
           <div key={`hist-${selectedCode}`} className="px-6 space-y-4 animate-slide-up pb-20">
-             {historyLogs.map((log) => (
-                 <div key={log.id} onClick={() => handleOpenLog(log)} className="bg-card p-6 rounded-[32px] flex items-center justify-between shadow-sm active:scale-[0.98] transition-transform cursor-pointer border border-white/5">
-                    <div className="flex flex-col gap-1">
-                        <span className="text-xs font-bold text-muted-foreground uppercase">{log.workout_date}</span>
-                        <div className="flex items-baseline gap-2">
-                            <span className="text-3xl font-black">{log.exercise_type === "531" ? log.data.top_weight : log.data.weight}</span>
-                            <span className="text-sm font-bold text-muted-foreground">kg</span>
-                            {log.exercise_type === "531" && <span className="ml-2 px-2 py-0.5 rounded bg-secondary/50 text-[10px] font-bold text-muted-foreground border border-white/5">{log.data.session?.toUpperCase()} / TM {log.data.tm}</span>}
+             {!historyLoading && historyLogs.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-20 text-center animate-fade-in">
+                    <div className="w-24 h-24 bg-secondary/50 rounded-full flex items-center justify-center mb-6 border border-white/5">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground/50">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
+                        </svg>
+                    </div>
+                    <h3 className="text-xl font-black text-foreground mb-2">No History Yet</h3>
+                    <p className="text-sm text-muted-foreground font-medium mb-8 max-w-[200px] leading-relaxed">
+                        There are no workout records for <span className="text-primary font-bold">{selectedCode}</span> yet.
+                    </p>
+                    <Button 
+                        onClick={() => setActiveTab("record")} 
+                        className="rounded-[24px] px-8 py-6 text-lg font-bold bg-secondary text-foreground hover:bg-secondary/80 transition-all active:scale-95"
+                    >
+                        Start Workout
+                    </Button>
+                </div>
+             ) : (
+                 historyLogs.map((log) => (
+                     <div key={log.id} onClick={() => handleOpenLog(log)} className="bg-card p-6 rounded-[32px] flex items-center justify-between shadow-sm active:scale-[0.98] transition-transform cursor-pointer border border-white/5">
+                        <div className="flex flex-col gap-1">
+                            <span className="text-xs font-bold text-muted-foreground uppercase">{log.workout_date}</span>
+                            <div className="flex items-baseline gap-2">
+                                <span className="text-3xl font-black">{log.exercise_type === "531" ? log.data.top_weight : log.data.weight}</span>
+                                <span className="text-sm font-bold text-muted-foreground">kg</span>
+                                {log.exercise_type === "531" && <span className="ml-2 px-2 py-0.5 rounded bg-secondary/50 text-[10px] font-bold text-muted-foreground border border-white/5">{log.data.session?.toUpperCase()} / TM {log.data.tm}</span>}
+                            </div>
                         </div>
-                    </div>
-                    <div className="flex flex-col items-end justify-center">
-                        <span className="text-2xl font-black text-primary">{log.exercise_type === "531" ? log.data.s3_reps : (log.exercise_code === 'DL' ? log.data.reps : log.data.s3)}</span>
-                        <span className="text-[9px] font-bold text-muted-foreground uppercase">{log.exercise_type === "531" ? "AMRAP" : (log.exercise_code === "DL" ? "REPS" : "SET 3")}</span>
-                    </div>
-                 </div>
-             ))}
+                        <div className="flex flex-col items-end justify-center">
+                            <span className="text-2xl font-black text-primary">{log.exercise_type === "531" ? log.data.s3_reps : (log.exercise_code === 'DL' ? log.data.reps : log.data.s3)}</span>
+                            <span className="text-[9px] font-bold text-muted-foreground uppercase">{log.exercise_type === "531" ? "AMRAP" : (log.exercise_code === "DL" ? "REPS" : "SET 3")}</span>
+                        </div>
+                     </div>
+                 ))
+             )}
           </div>
         )}
         
         {activeTab === "settings" && (
-             <div className="px-6 space-y-6 animate-slide-up"><div className="bg-card rounded-[32px] overflow-hidden shadow-sm border border-white/5"><div className="p-6 border-b border-border/50 flex justify-between items-center"><span className="font-bold text-lg">Body Weight</span><div className="w-24 h-14"><GhostInput value={settingsForm.body_weight} onChange={(e:any) => setSettingsForm({...settingsForm, body_weight: Number(e.target.value)})} /></div></div><div className="p-6 border-b border-border/50 flex justify-between items-center"><span className="font-bold text-lg">Standard Inc</span><div className="w-24 h-14"><GhostInput value={settingsForm.unit_standard} onChange={(e:any) => setSettingsForm({...settingsForm, unit_standard: Number(e.target.value)})} /></div></div><div className="p-6 flex justify-between items-center"><span className="font-bold text-lg">Pull-up Inc</span><div className="w-24 h-14"><GhostInput value={settingsForm.unit_pullup} onChange={(e:any) => setSettingsForm({...settingsForm, unit_pullup: Number(e.target.value)})} /></div></div><div className="p-6 border-t border-border/50"><span className="font-bold text-lg mb-4 block">Exercise Order</span><Reorder.Group axis="y" values={displayOrder} onReorder={handleReorder} className="space-y-2">{displayOrder.map((code) => (<Reorder.Item key={code} value={code} className="flex items-center justify-between bg-secondary/50 rounded-2xl p-4 shadow-sm active:scale-[0.98] active:bg-secondary cursor-grab active:cursor-grabbing border border-white/5 select-none touch-none"><span className="text-xl font-black">{code}</span><div className="p-2 cursor-grab active:cursor-grabbing"><Icons.Grip/></div></Reorder.Item>))}</Reorder.Group></div></div><Button className="w-full h-16 rounded-[24px] font-bold text-lg" onClick={handleSaveConfig}>Save Changes</Button></div>
+             <div className="px-6 space-y-2 animate-slide-up pb-32">
+                <SettingSection title="Workout Parameters" icon={Icons.Scale} defaultOpen={true}>
+                    <div className="space-y-6 mt-2">
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <span className="font-bold text-lg block">Body Weight</span>
+                                <span className="text-xs text-muted-foreground font-medium">For Pull-up calculations</span>
+                            </div>
+                            <div className="w-24 h-14"><GhostInput value={settingsForm.body_weight} onChange={(e:any) => setSettingsForm({...settingsForm, body_weight: Number(e.target.value)})} /></div>
+                        </div>
+                        
+                        <div className="w-full h-px bg-border/50" />
+
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <span className="font-bold text-lg block">Standard Unit</span>
+                                <span className="text-xs text-muted-foreground font-medium">Weight increment step</span>
+                            </div>
+                            <div className="w-24 h-14"><GhostInput value={settingsForm.unit_standard} onChange={(e:any) => setSettingsForm({...settingsForm, unit_standard: Number(e.target.value)})} /></div>
+                        </div>
+
+                        <div className="w-full h-px bg-border/50" />
+
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <span className="font-bold text-lg block">Pull-up Unit</span>
+                                <span className="text-xs text-muted-foreground font-medium">Weighted Pull-up step</span>
+                            </div>
+                            <div className="w-24 h-14"><GhostInput value={settingsForm.unit_pullup} onChange={(e:any) => setSettingsForm({...settingsForm, unit_pullup: Number(e.target.value)})} /></div>
+                        </div>
+                    </div>
+                </SettingSection>
+
+                <SettingSection title="Exercise Arrangement" icon={Icons.List}>
+                    <div className="mt-2">
+                        <div className="mb-4 text-xs font-bold text-muted-foreground uppercase tracking-widest text-center">
+                            Drag to Reorder
+                        </div>
+                        <Reorder.Group axis="y" values={displayOrder} onReorder={handleReorder} className="space-y-2">
+                            {displayOrder.map((code) => (
+                                <Reorder.Item key={code} value={code} className="flex items-center justify-between bg-secondary/30 rounded-2xl p-4 shadow-sm active:scale-[0.98] active:bg-secondary cursor-grab active:cursor-grabbing border border-white/5 select-none touch-none">
+                                    <span className="text-xl font-black ml-2">{code}</span>
+                                    <div className="p-2 cursor-grab active:cursor-grabbing text-muted-foreground">
+                                        <Icons.Grip/>
+                                    </div>
+                                </Reorder.Item>
+                            ))}
+                        </Reorder.Group>
+                    </div>
+                </SettingSection>
+
+                <div className="pt-4">
+                    <Button className="w-full h-16 rounded-[24px] font-bold text-lg bg-primary text-white shadow-xl shadow-primary/20 active:scale-95 transition-all" onClick={handleSaveConfig}>
+                        Save All Changes
+                    </Button>
+                </div>
+             </div>
         )}
       </div>
 
-      <div className="fixed bottom-8 left-0 right-0 px-8 z-50 flex justify-center pointer-events-none"><div className="pointer-events-auto bg-background/80 backdrop-blur-2xl border border-white/10 rounded-full shadow-2xl p-2.5 flex items-center gap-4"><Tabs value={activeTab} onValueChange={setActiveTab} className="w-auto"><TabsList className="bg-transparent h-auto p-0 flex gap-4">{['record', 'history', 'settings'].map(tab => (<TabsTrigger key={tab} value={tab} className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 shadow-none border-none active:scale-90 data-[state=active]:bg-primary data-[state=active]:text-white text-muted-foreground data-[state=active]:shadow-[0_0_15px_rgba(var(--primary),0.5)]`}>{tab === 'record' && <Icons.Record/>}{tab === 'history' && <Icons.History/>}{tab === 'settings' && <Icons.Settings/>}</TabsTrigger>))}</TabsList></Tabs></div></div>
+      {/* --- [MODIFIED] Bottom Navigation Bar --- */}
+      <div className="fixed bottom-8 left-0 right-0 px-6 z-50 flex justify-center pointer-events-none">
+        {/* [Design Fix] 
+           1. rounded-[24px]: 바깥쪽 곡률을 살짝 줄여서 스쿼클 형태에 맞춤
+           2. p-1.5: 내부 버튼과의 간격을 6px로 조정 (곡률 계산: 24px - 6px = 18px)
+        */}
+        <div className="pointer-events-auto bg-background/90 backdrop-blur-3xl border border-white/10 rounded-[24px] shadow-2xl p-1.5 flex items-center">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-auto">
+            <TabsList className="bg-transparent h-auto p-0 flex gap-1 relative">
+              {['record', 'history', 'settings'].map((tab) => {
+                const isActive = activeTab === tab;
+                return (
+                  <TabsTrigger
+                    key={tab}
+                    value={tab}
+                    // [Design Fix] h-12로 높이 축소, rounded-[18px]로 내부 곡률 최적화
+                    className="relative w-16 h-12 rounded-[18px] flex items-center justify-center transition-all duration-300 border-none shadow-none text-muted-foreground data-[state=active]:text-white bg-transparent z-10 hover:bg-white/5"
+                  >
+                    {/* 활성 상태 배경 */}
+                    {isActive && (
+                      <motion.div
+                        layoutId="active-tab-bg"
+                        // [Design Fix] 그림자를 더 은은하게 퍼지도록 수정 (shadow-primary/30)
+                        className="absolute inset-0 bg-primary rounded-[18px] shadow-[0_4px_20px_-2px_rgba(var(--primary),0.4)]"
+                        transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                      />
+                    )}
+                    
+                    {/* 아이콘 */}
+                    <div className="relative z-20 mix-blend-normal scale-90">
+                        {tab === 'record' && <Icons.Record/>}
+                        {tab === 'history' && <Icons.History/>}
+                        {tab === 'settings' && <Icons.Settings/>}
+                    </div>
+                  </TabsTrigger>
+                );
+              })}
+            </TabsList>
+          </Tabs>
+        </div>
+      </div>
 
       {viewLog && editForm && (
         <div className={`fixed inset-0 z-[60] flex items-center justify-center p-6 bg-black/40 backdrop-blur-md transition-opacity duration-300 ${isClosing ? 'opacity-0' : 'opacity-100'}`} onClick={closeDetailModal}>
