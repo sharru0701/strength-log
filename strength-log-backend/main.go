@@ -82,7 +82,7 @@ func corsMiddleware(next http.HandlerFunc) http.HandlerFunc {
 		// [수정 2] "쿠키(신분증) 받아도 됨"이라고 명시
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
 
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 
 		if r.Method == "OPTIONS" {
