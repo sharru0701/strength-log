@@ -1,26 +1,23 @@
 version: '3.8'
 
 services:
-  # 1. 데이터베이스 (PostgreSQL)
+  # 1. 데이터베이스
   db:
+    image: postgres:16-alpine
     container_name: postgres-db
-    image: postgres:16-alpine # DB는 굳이 빌드할 필요 없이 공식 이미지 사용
     restart: always
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: pass1234
+      # [수정] .env 파일에서 DB_PASSWORD를 가져옴
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     ports:
-      - "5432:5432" # 외부(DBeaver) 접속용
+      - "5432:5432"
     volumes:
-      - ./postgres-data:/var/lib/postgresql/data # 데이터 영구 저장
-      # - ./db_data:/var/lib/postgresql/data
+      - ./postgres-data:/var/lib/postgresql/data
 
-  # 2. 백엔드 (Go) - 소스 코드 직접 빌드
+  # 2. 백엔드
   backend:
     container_name: strength-log-backend
-    # build: 
-    #   context: ./strength-log-backend # 백엔드 소스 폴더 위치
-    #   dockerfile: Dockerfile
     image: sharru0701/strength-log-backend:latest
     restart: always
     ports:
@@ -28,15 +25,12 @@ services:
     depends_on:
       - db
     environment:
-      # host=db : 도커 내부 네트워크에서 'db' 서비스를 찾아감
-      DB_DSN: "host=db user=postgres password=pass1234 dbname=postgres port=5432 sslmode=disable TimeZone=Asia/Seoul"
+      # [수정] DSN 문자열 안에 변수 삽입
+      DB_DSN: "host=db user=postgres password=${DB_PASSWORD} dbname=postgres port=5432 sslmode=disable TimeZone=Asia/Seoul"
 
-  # 3. 프론트엔드 (Next.js) - 소스 코드 직접 빌드
+  # 3. 프론트엔드
   frontend:
     container_name: strength-log-frontend
-    # build: 
-    #   context: ./strength-log-frontend # 프론트엔드 소스 폴더 위치
-    #   dockerfile: Dockerfile
     image: sharru0701/strength-log-frontend:latest
     restart: always
     ports:

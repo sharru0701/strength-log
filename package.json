@@ -1,0 +1,32 @@
+{
+  "name": "strength-log",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "db:up": "docker compose -f docker-compose.dev.yml up -d db",
+    "dev": "npm run db:up && wait-on tcp:5432 && concurrently \"npm run backend\" \"npm run frontend\"",
+    "backend": "cd strength-log-backend && go run cmd/api/main.go",
+    "frontend": "cd strength-log-frontend && npm run dev"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sharru0701/strength-log.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/sharru0701/strength-log/issues"
+  },
+  "homepage": "https://github.com/sharru0701/strength-log#readme",
+  "devDependencies": {
+    "autoprefixer": "^10.4.24",
+    "concurrently": "^9.2.1",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.18",
+    "wait-on": "^9.0.3"
+  }
+}

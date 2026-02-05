@@ -9,3 +9,4 @@ dist
 *.exe
 *.log
 postgres-data
+.env
