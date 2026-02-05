@@ -1,0 +1,6 @@
+# [긴급 복구 가이드]
+# 1. 백업 파일 확인
+# ls -lh ~/backups/
+
+# 2. 복구 명령어 (기존 DB 덮어쓰기 주의!)
+# zcat ~/backups/db_backup_날짜.sql.gz | docker exec -i strength-log_db_local psql -U postgres -d strength_log
