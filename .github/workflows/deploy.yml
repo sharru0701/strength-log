@@ -34,13 +34,11 @@ jobs:
           build-args: |
             NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}
 
-  # 2. 서버 배포 (여기가 핵심! Tailscale 터널링 필요)
+  # 2. 서버 배포
   deploy-to-server:
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
-      # [추가됨] Tailscale 연결 (OAuth 방식)
-      # SSH 접속 전에 무조건 먼저 실행되어야 합니다.
       - name: Connect to Tailscale
         uses: tailscale/github-action@v2
         with:
@@ -51,29 +49,29 @@ jobs:
 
       - name: Tell Server to Deploy
         uses: appleboy/ssh-action@master
+        env:
+          # GitHub Secret을 러너 환경변수로 주입
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.SSH_KEY }}
           port: 22
-          # [핵심 1] 스크립트로 넘길 비밀 변수들을 여기에 명시
+          # SSH 접속 시 가져갈 환경변수 목록 지정
           envs: DB_PASSWORD
-        env:
-          # [핵심 2] GitHub Secret을 환경변수와 매핑
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-        script: |
-          cd strength-log
-          git pull origin main
-          
-          # [핵심 3] 서버에 .env 파일 생성 (비밀번호 주입)
-          # 기존 파일이 있다면 덮어씁니다.
-          echo "DB_PASSWORD=$DB_PASSWORD" > .env
-          
-          # 최신 이미지 다운로드
-          docker compose pull
-          
-          # 갈아끼우기 (.env 파일을 자동으로 읽음)
-          docker compose up -d
-          
-          # 찌꺼기 청소
-          docker image prune -f
+          # ▼ [수정됨] script가 with 블록 안으로 들어왔습니다!
+          script: |
+            cd strength-log
+            git pull origin main
+            
+            # 서버에 .env 파일 생성 (비밀번호 주입)
+            echo "DB_PASSWORD=$DB_PASSWORD" > .env
+            
+            # 최신 이미지 다운로드
+            docker compose pull
+            
+            # 갈아끼우기
+            docker compose up -d
+            
+            # 찌꺼기 청소
+            docker image prune -f
